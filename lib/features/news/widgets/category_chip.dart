@@ -1,1 +1,0 @@
-// Category Chip placeholder

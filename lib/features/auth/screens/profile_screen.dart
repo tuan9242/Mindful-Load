@@ -1,1 +1,1 @@
-// Profile Screen placeholder
+// Profile Screen
