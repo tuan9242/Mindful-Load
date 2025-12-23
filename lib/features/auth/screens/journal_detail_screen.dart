@@ -1,0 +1,1 @@
+// Journal Detail Screen
