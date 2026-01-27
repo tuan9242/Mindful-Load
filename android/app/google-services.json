@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "759026003067",
+    "project_id": "btl-1771020719",
+    "storage_bucket": "btl-1771020719.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:759026003067:android:c99ea62d67bed47a30c6de",
+        "android_client_info": {
+          "package_name": "com.mindful_load"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA8UECu38B-UC2XVGaD_0RROI_SxrB8-DE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
