@@ -221,12 +221,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       height: 52,
                       child: ElevatedButton(
                         onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const MoodCheckInScreen(),
-                            ),
-                          );
+                          Navigator.pushReplacementNamed(context, '/');
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.primary,
