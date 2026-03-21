@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mindful_load/features/news/screens/main_screen.dart';
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
@@ -7,8 +8,11 @@ class SplashScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // Navigate to Onboarding or Home after delay
     Future.delayed(const Duration(seconds: 2), () {
-      // logic to check if first time or logged in
-      // Navigator.of(context).pushReplacement(...);
+       if (context.mounted) {
+         Navigator.of(context).pushReplacement(
+           MaterialPageRoute(builder: (_) => const MainScreen()),
+         );
+       }
     });
 
     return Scaffold(
