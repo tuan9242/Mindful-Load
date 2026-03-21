@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:mindful_load/features/news/screens/main_screen.dart';
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
@@ -9,9 +8,7 @@ class SplashScreen extends StatelessWidget {
     // Navigate to Onboarding or Home after delay
     Future.delayed(const Duration(seconds: 2), () {
        if (context.mounted) {
-         Navigator.of(context).pushReplacement(
-           MaterialPageRoute(builder: (_) => const MainScreen()),
-         );
+         Navigator.of(context).pushReplacementNamed('/');
        }
     });
 
