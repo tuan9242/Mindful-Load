@@ -1,42 +1,74 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
+import 'package:mindful_load/features/news/screens/alerts/reminder_screen.dart';
+import 'package:mindful_load/features/interaction/screens/config/custom_tag_screen.dart';
+import 'package:mindful_load/utils/journal_analytics.dart';
+import 'package:mindful_load/features/auth/screens/identity/user_info_screen.dart';
+import 'package:mindful_load/features/interaction/screens/config/theme_settings_screen.dart';
+import 'package:mindful_load/features/interaction/screens/config/backup_restore_screen.dart';
+import 'package:mindful_load/features/news/screens/analytics/export_report_screen.dart';
+import 'package:mindful_load/features/auth/screens/identity/about_us_screen.dart';
+import 'package:mindful_load/features/auth/screens/identity/security_methods_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  User? _user;
+
+  @override
+  void initState() {
+    super.initState();
+    _user = FirebaseAuth.instance.currentUser;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Colors matching the provided image and Tailwind config
-    final bgColor = const Color(0xFF0A0F18); // background-dark
-    final surfaceColor = const Color(0xFF161E2D); // surface-dark
-    final primaryColor = const Color(0xFF135BEC);
-    final borderColor = Colors.white.withOpacity(0.05);
-    final textColor = Colors.white;
-    final secondaryTextColor = Colors.white.withOpacity(0.4);
-    final labelColor = Colors.white.withOpacity(0.3);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final bgColor = theme.scaffoldBackgroundColor;
+    final surfaceColor = theme.cardColor;
+    final primaryColor = theme.primaryColor;
+    final borderColor = theme.dividerColor;
+    final textColor = theme.textTheme.bodyLarge?.color ?? Colors.black;
+    final labelColor = theme.textTheme.bodySmall?.color ?? Colors.grey;
 
     return Scaffold(
       backgroundColor: bgColor,
       body: SafeArea(
         child: Column(
           children: [
-            // Header
             _buildHeader(surfaceColor, borderColor, textColor, context),
-
-            // Scrollable Content
             Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Profile Card
-                      _buildProfileCard(surfaceColor, borderColor, primaryColor, textColor),
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('journals')
+                    .where('userId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  final docs = snapshot.data?.docs ?? [];
+                  final analytics = JournalAnalytics(docs.map((d) => d.data() as Map<String, dynamic>).toList());
+
+                  return SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          GestureDetector(
+                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserInfoScreen())),
+                            child: _buildProfileCard(surfaceColor, borderColor, primaryColor, textColor, analytics, isDark),
+                          ),
 
                       const SizedBox(height: 32),
 
-                      // Section: Cá nhân hóa
                       _buildSectionLabel('Cá nhân hóa', labelColor),
                       _buildSectionContainer(
                         surfaceColor: surfaceColor,
@@ -47,32 +79,33 @@ class ProfileScreen extends StatelessWidget {
                             title: 'Quản lý Nhãn',
                             textColor: textColor,
                             borderColor: borderColor,
-                            iconBgColor: Colors.white.withOpacity(0.05),
+                            iconBgColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
                             showBorder: true,
-                          ),
-                          _buildListTile(
-                            icon: Icons.hub_rounded,
-                            title: 'Liên kết Ngữ cảnh',
-                            textColor: textColor,
-                            borderColor: borderColor,
-                            iconBgColor: Colors.white.withOpacity(0.05),
-                            showBorder: true,
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const CustomTagScreen()),
+                            ),
+                            isDark: isDark,
                           ),
                           _buildListTileWithTrailingText(
                             icon: Icons.palette_rounded,
                             title: 'Giao diện & Chủ đề',
-                            trailingText: 'Tối',
+                            trailingText: isDark ? 'Tối' : 'Sáng',
                             textColor: textColor,
                             borderColor: borderColor,
-                            iconBgColor: Colors.white.withOpacity(0.05),
+                            iconBgColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
                             showBorder: false,
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const ThemeSettingsScreen()),
+                            ),
+                            isDark: isDark,
                           ),
                         ],
                       ),
 
                       const SizedBox(height: 32),
 
-                      // Section: Dữ liệu & Hệ thống
                       _buildSectionLabel('Dữ liệu & Hệ thống', labelColor),
                       _buildSectionContainer(
                         surfaceColor: surfaceColor,
@@ -83,31 +116,32 @@ class ProfileScreen extends StatelessWidget {
                             title: 'Xuất Báo cáo',
                             textColor: textColor,
                             borderColor: borderColor,
-                            iconBgColor: Colors.white.withOpacity(0.05),
+                            iconBgColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
                             showBorder: true,
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const ExportReportScreen()),
+                            ),
+                            isDark: isDark,
                           ),
                           _buildListTile(
                             icon: Icons.cloud_sync_rounded,
                             title: 'Sao lưu & Khôi phục',
                             textColor: textColor,
                             borderColor: borderColor,
-                            iconBgColor: Colors.white.withOpacity(0.05),
-                            showBorder: true,
-                          ),
-                          _buildSwitchTile(
-                            icon: Icons.face_rounded,
-                            title: 'Bảo mật (FaceID)',
-                            value: true,
-                            onChanged: (val) {},
-                            textColor: textColor,
-                            iconBgColor: Colors.white.withOpacity(0.05),
+                            iconBgColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
+                            showBorder: false,
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const BackupRestoreScreen()),
+                            ),
+                            isDark: isDark,
                           ),
                         ],
                       ),
 
                       const SizedBox(height: 32),
 
-                      // Section: Cấu hình chung
                       _buildSectionLabel('Cấu hình chung', labelColor),
                       _buildSectionContainer(
                         surfaceColor: surfaceColor,
@@ -118,41 +152,52 @@ class ProfileScreen extends StatelessWidget {
                             title: 'Cài đặt thông báo',
                             textColor: textColor,
                             borderColor: borderColor,
-                            iconBgColor: Colors.white.withOpacity(0.05),
+                            iconBgColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
                             showBorder: true,
-                          ),
-                          _buildListTile(
-                            icon: Icons.error_outline_rounded,
-                            title: 'Cấu hình SOS',
-                            textColor: textColor,
-                            borderColor: borderColor,
-                            iconBgColor: Colors.white.withOpacity(0.05),
-                            showBorder: true,
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const ReminderScreen()),
+                            ),
+                            isDark: isDark,
                           ),
                           _buildListTile(
                             icon: Icons.info_outline_rounded,
                             title: 'Về chúng tôi',
                             textColor: textColor,
                             borderColor: borderColor,
-                            iconBgColor: Colors.white.withOpacity(0.05),
+                            iconBgColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
                             showBorder: true,
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const AboutUsScreen()),
+                            ),
+                            isDark: isDark,
                           ),
                           _buildListTile(
                             icon: Icons.verified_user_rounded,
                             title: 'Chính sách bảo mật',
                             textColor: textColor,
                             borderColor: borderColor,
-                            iconBgColor: Colors.white.withOpacity(0.05),
+                            iconBgColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
                             showBorder: false,
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const SecurityMethodsScreen()),
+                            ),
+                            isDark: isDark,
                           ),
                         ],
                       ),
 
                       const SizedBox(height: 24),
 
-                      // Delete Button
                       OutlinedButton.icon(
-                        onPressed: () {},
+                        onPressed: () async {
+                          await FirebaseAuth.instance.signOut();
+                          if (context.mounted) {
+                            Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                          }
+                        },
                         style: OutlinedButton.styleFrom(
                           backgroundColor: Colors.red.withOpacity(0.1),
                           side: BorderSide(color: Colors.red.withOpacity(0.2)),
@@ -161,9 +206,9 @@ class ProfileScreen extends StatelessWidget {
                           ),
                           padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
-                        icon: const Icon(Icons.delete_forever_rounded, color: Colors.red),
+                        icon: const Icon(Icons.logout_rounded, color: Colors.red),
                         label: const Text(
-                          'Xóa toàn bộ dữ liệu',
+                          'Đăng xuất',
                           style: TextStyle(
                             color: Colors.red,
                             fontWeight: FontWeight.bold,
@@ -173,14 +218,13 @@ class ProfileScreen extends StatelessWidget {
                       ),
 
                       const SizedBox(height: 32),
-                    ],
-                  ),
-                ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
-            
-            // Bottom Navigation
-            _buildBottomNav(surfaceColor, borderColor, primaryColor),
           ],
         ),
       ),
@@ -195,19 +239,9 @@ class ProfileScreen extends StatelessWidget {
         children: [
           Row(
             children: [
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                icon: Icon(Icons.arrow_back_ios_new, color: textColor, size: 20),
-                onPressed: () {
-                  if (Navigator.canPop(context)) {
-                    Navigator.pop(context);
-                  }
-                },
-              ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Text(
-                'Cài đặt Tâm An',
+                'Cài đặt & Hồ sơ',
                 style: TextStyle(
                   color: textColor,
                   fontSize: 20,
@@ -216,30 +250,64 @@ class ProfileScreen extends StatelessWidget {
               ),
             ],
           ),
-          Container(
-            height: 40,
-            width: 40,
-            decoration: BoxDecoration(
-              color: surfaceColor,
-              shape: BoxShape.circle,
-              border: Border.all(color: borderColor),
+          GestureDetector(
+            onTap: () {
+              Navigator.pushNamed(context, '/notifications');
+            },
+            child: Container(
+              height: 40,
+              width: 40,
+              decoration: BoxDecoration(
+                color: surfaceColor,
+                shape: BoxShape.circle,
+                border: Border.all(color: borderColor),
+              ),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Icon(Icons.notifications_rounded, color: textColor, size: 20),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('notifications')
+                          .where('userId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+                          .where('isRead', isEqualTo: false)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
+                          return Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
-            child: Icon(Icons.notifications_rounded, color: textColor, size: 20),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildProfileCard(Color surfaceColor, Color borderColor, Color primaryColor, Color textColor) {
+  Widget _buildProfileCard(Color surfaceColor, Color borderColor, Color primaryColor, Color textColor, JournalAnalytics analytics, bool isDark) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: surfaceColor,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: borderColor),
-        boxShadow: const [
-          BoxShadow(
+        boxShadow: isDark ? [] : [
+          const BoxShadow(
             color: Colors.black12,
             blurRadius: 10,
             offset: Offset(0, 4),
@@ -248,7 +316,6 @@ class ProfileScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Avatar
           Container(
             width: 60,
             height: 60,
@@ -261,17 +328,26 @@ class ProfileScreen extends StatelessWidget {
           ),
           const SizedBox(width: 16),
           
-          // Info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Nguyễn Minh Tâm',
+                  _user?.email?.split('@').first ?? 'Tài khoản',
                   style: TextStyle(
                     color: textColor,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _user?.email ?? '',
+                  style: TextStyle(
+                    color: textColor.withOpacity(0.5),
+                    fontSize: 12,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -292,17 +368,16 @@ class ProfileScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                // Progress bar
                 Container(
                   height: 4,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
+                    color: isDark ? Colors.white.withOpacity(0.1) : Colors.grey.shade200,
                     borderRadius: BorderRadius.circular(2),
                   ),
                   child: FractionallySizedBox(
                     alignment: Alignment.centerLeft,
-                    widthFactor: 0.65,
+                    widthFactor: analytics.totalXP == 0 ? 0.0 : (analytics.totalXP % 1000) / 1000,
                     child: Container(
                       decoration: BoxDecoration(
                         color: primaryColor,
@@ -322,14 +397,14 @@ class ProfileScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Cấp độ 12',
+                      'Cấp độ ${analytics.currentLevel}',
                       style: TextStyle(
                         color: textColor.withOpacity(0.4),
                         fontSize: 10,
                       ),
                     ),
                     Text(
-                      '1,250 / 2,000 XP',
+                      '${NumberFormat('#,###').format(analytics.totalXP)} / ${NumberFormat('#,###').format(analytics.nextLevelXP)} XP',
                       style: TextStyle(
                         color: textColor.withOpacity(0.4),
                         fontSize: 10,
@@ -354,7 +429,7 @@ class ProfileScreen extends StatelessWidget {
         label.toUpperCase(),
         style: TextStyle(
           color: labelColor,
-          fontSize: 12, // bumped up slightly from 10px in html for readability in mobile
+          fontSize: 12,
           fontWeight: FontWeight.bold,
           letterSpacing: 1.5,
         ),
@@ -382,6 +457,8 @@ class ProfileScreen extends StatelessWidget {
     required Color borderColor,
     required Color iconBgColor,
     required bool showBorder,
+    required bool isDark,
+    VoidCallback? onTap,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -393,10 +470,10 @@ class ProfileScreen extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: Colors.white, // In screenshot, icons have a white shape behind them
+            color: isDark ? Colors.white : Colors.grey.shade200,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(icon, color: const Color(0xFF161E2D), size: 20), // Dark icon color to contrast with white bg
+          child: Icon(icon, color: isDark ? const Color(0xFF161E2D) : Colors.black87, size: 20),
         ),
         title: Text(
           title,
@@ -407,7 +484,7 @@ class ProfileScreen extends StatelessWidget {
           ),
         ),
         trailing: Icon(Icons.chevron_right, color: textColor.withOpacity(0.3)),
-        onTap: () {},
+        onTap: onTap ?? () {},
       ),
     );
   }
@@ -420,6 +497,8 @@ class ProfileScreen extends StatelessWidget {
     required Color borderColor,
     required Color iconBgColor,
     required bool showBorder,
+    required bool isDark,
+    VoidCallback? onTap,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -431,10 +510,10 @@ class ProfileScreen extends StatelessWidget {
            width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? Colors.white : Colors.grey.shade200,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(icon, color: const Color(0xFF161E2D), size: 20),
+          child: Icon(icon, color: isDark ? const Color(0xFF161E2D) : Colors.black87, size: 20),
         ),
         title: Text(
           title,
@@ -458,85 +537,8 @@ class ProfileScreen extends StatelessWidget {
             Icon(Icons.chevron_right, color: textColor.withOpacity(0.3)),
           ],
         ),
-        onTap: () {},
+        onTap: onTap ?? () {},
       ),
-    );
-  }
-
-  Widget _buildSwitchTile({
-    required IconData icon,
-    required String title,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-    required Color textColor,
-    required Color iconBgColor,
-  }) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      leading: Container(
-         width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-          ),
-        child: Icon(icon, color: const Color(0xFF161E2D), size: 20),
-      ),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: textColor,
-          fontSize: 15,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-      trailing: Switch(
-        value: value,
-        onChanged: onChanged,
-        activeColor: Colors.white, // The thumb dot
-        activeTrackColor: const Color(0xFF135BEC), // primary color track
-        inactiveThumbColor: Colors.white,
-        inactiveTrackColor: Colors.white.withOpacity(0.1),
-      ),
-    );
-  }
-
-   Widget _buildBottomNav(Color surfaceColor, Color borderColor, Color primaryColor) {
-    return Container(
-      padding: const EdgeInsets.only(top: 12, bottom: 24),
-      decoration: BoxDecoration(
-        color: surfaceColor.withOpacity(0.95),
-        border: Border(top: BorderSide(color: borderColor)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildBottomNavItem(Icons.check_circle_outline, 'Check-in', false, primaryColor),
-          _buildBottomNavItem(Icons.book, 'Nhật ký', false, primaryColor),
-          _buildBottomNavItem(Icons.analytics_outlined, 'Phân tích', false, primaryColor),
-          _buildBottomNavItem(Icons.settings, 'Cài đặt', true, primaryColor),
-        ],
-      ),
-    );
-  }
-
-   Widget _buildBottomNavItem(IconData icon, String label, bool isActive, Color primaryColor) {
-    final color = isActive ? primaryColor : Colors.white.withOpacity(0.4);
-    
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: color, size: 24),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontSize: 10,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
     );
   }
 }

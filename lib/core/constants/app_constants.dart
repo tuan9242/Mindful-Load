@@ -4,7 +4,7 @@ class AppConstants {
   // Mood Data
   static const List<Map<String, dynamic>> moods = [
     {'label': 'Hạnh phúc', 'emoji': '😊', 'color': Color(0xFFFFD700)},
-    {'label': 'Vui', 'emoji': '😄', 'color': Color(0xFF4CAF50)},
+    {'label': 'Vui vẻ', 'emoji': '😄', 'color': Color(0xFF4CAF50)},
     {'label': 'Bình thường', 'emoji': '😐', 'color': Color(0xFF90A4AE)},
     {'label': 'Buồn', 'emoji': '😢', 'color': Color(0xFF5C6BC0)},
     {'label': 'Lo lắng', 'emoji': '😟', 'color': Color(0xFFFF9800)},

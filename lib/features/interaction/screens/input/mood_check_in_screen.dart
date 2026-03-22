@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:mindful_load/core/theme/app_theme.dart';
 import 'package:mindful_load/core/constants/app_constants.dart';
-import 'package:mindful_load/features/interaction/screens/add_detail_screen.dart';
+import 'package:mindful_load/features/interaction/screens/input/add_detail_screen.dart';
 
 class MoodCheckInScreen extends StatefulWidget {
-  const MoodCheckInScreen({super.key});
+  final VoidCallback? onClose;
+  final VoidCallback? onCompleted;
+  
+  const MoodCheckInScreen({super.key, this.onClose, this.onCompleted});
 
   @override
   State<MoodCheckInScreen> createState() => _MoodCheckInScreenState();
@@ -29,8 +31,14 @@ class _MoodCheckInScreenState extends State<MoodCheckInScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryColor = theme.primaryColor;
+    final textColor = theme.textTheme.bodyLarge?.color ?? Colors.black;
+    final secondaryTextColor = theme.textTheme.bodySmall?.color ?? Colors.grey;
+
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -40,63 +48,56 @@ class _MoodCheckInScreenState extends State<MoodCheckInScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Icon(Icons.self_improvement,
-                      color: AppTheme.primary, size: 24),
+                  Icon(Icons.self_improvement,
+                      color: primaryColor, size: 24),
                   Column(
                     children: [
-                      const Text(
+                      Text(
                         'Tâm An',
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: textColor,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       Text(
                         _getFormattedDate(),
-                        style: const TextStyle(
-                          color: AppTheme.textMuted,
+                        style: TextStyle(
+                          color: secondaryTextColor,
                           fontSize: 12,
                         ),
                       ),
                     ],
                   ),
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppTheme.surfaceCard,
-                      border: Border.all(color: AppTheme.borderColor),
-                    ),
-                    child: const Icon(Icons.settings_outlined,
-                        color: AppTheme.textSecondary, size: 18),
+                  IconButton(
+                    icon: Icon(Icons.close, color: textColor.withOpacity(0.5)),
+                    onPressed: widget.onClose,
                   ),
                 ],
               ),
             ),
 
             // Title
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
               child: Column(
                 children: [
                   Text(
                     'Bạn đang cảm thấy\nthế nào?',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: AppTheme.textPrimary,
+                      color: textColor,
                       fontSize: 26,
                       fontWeight: FontWeight.bold,
                       height: 1.3,
                     ),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
                     'Hãy lắng nghe cơ thể và tâm trí bạn ngay lúc này.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: textColor.withOpacity(0.7),
                       fontSize: 14,
                       height: 1.5,
                     ),
@@ -107,44 +108,47 @@ class _MoodCheckInScreenState extends State<MoodCheckInScreen> {
 
             const SizedBox(height: 8),
 
-            // Mood grid
             Expanded(
-              child: Padding(
+              child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: GridView.count(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 1.6,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: AppConstants.moods.map((mood) {
-                    final isSelected = _selectedMood == mood['label'];
-                    return _MoodCard(
-                      emoji: mood['emoji'],
-                      label: mood['label'],
-                      color: mood['color'],
-                      isSelected: isSelected,
-                      onTap: () {
-                        setState(() => _selectedMood = mood['label']);
-                      },
-                    );
-                  }).toList(),
+                child: Column(
+                  children: [
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      alignment: WrapAlignment.center,
+                      children: [
+                        ...AppConstants.moods.map((mood) {
+                          final isSelected = _selectedMood == mood['label'];
+                          return SizedBox(
+                            width: (MediaQuery.of(context).size.width - 40 - 12) / 2,
+                            child: _MoodCard(
+                              emoji: mood['emoji'],
+                              label: mood['label'],
+                              color: mood['color'],
+                              isSelected: isSelected,
+                              onTap: () {
+                                setState(() => _selectedMood = mood['label']);
+                              },
+                            ),
+                          );
+                        }).toList(),
+                        SizedBox(
+                          width: (MediaQuery.of(context).size.width - 40 - 12) / 2,
+                          child: _MoodCard(
+                            emoji: AppConstants.angryMood['emoji'],
+                            label: AppConstants.angryMood['label'],
+                            color: AppConstants.angryMood['color'],
+                            isSelected: _selectedMood == AppConstants.angryMood['label'],
+                            onTap: () {
+                              setState(() => _selectedMood = AppConstants.angryMood['label']);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ),
-            ),
-
-            // Angry mood (bottom single)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: _MoodCard(
-                emoji: AppConstants.angryMood['emoji'],
-                label: AppConstants.angryMood['label'],
-                color: AppConstants.angryMood['color'],
-                isSelected: _selectedMood == AppConstants.angryMood['label'],
-                onTap: () {
-                  setState(() => _selectedMood = AppConstants.angryMood['label']);
-                },
-                fullWidth: true,
               ),
             ),
 
@@ -162,21 +166,23 @@ class _MoodCheckInScreenState extends State<MoodCheckInScreen> {
                             MaterialPageRoute(
                               builder: (_) => AddDetailScreen(
                                 selectedMood: _selectedMood!,
+                                onClose: widget.onClose,
+                                onCompleted: widget.onCompleted,
                               ),
                             ),
                           );
                         }
                       : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
+                    backgroundColor: primaryColor,
                     disabledBackgroundColor:
-                        AppTheme.primary.withOpacity(0.4),
+                        primaryColor.withOpacity(0.4),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
                     elevation: 8,
-                    shadowColor: AppTheme.primary.withOpacity(0.4),
+                    shadowColor: primaryColor.withOpacity(0.4),
                   ),
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -208,7 +214,6 @@ class _MoodCard extends StatelessWidget {
   final Color color;
   final bool isSelected;
   final VoidCallback onTap;
-  final bool fullWidth;
 
   const _MoodCard({
     required this.emoji,
@@ -216,22 +221,24 @@ class _MoodCard extends StatelessWidget {
     required this.color,
     required this.isSelected,
     required this.onTap,
-    this.fullWidth = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
+        height: 76,
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
           color: isSelected
               ? color.withOpacity(0.15)
-              : AppTheme.surfaceCard,
+              : theme.cardColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? color.withOpacity(0.6) : AppTheme.borderColor,
+            color: isSelected ? color.withOpacity(0.6) : theme.dividerColor,
             width: isSelected ? 1.5 : 1,
           ),
           boxShadow: isSelected
@@ -252,7 +259,7 @@ class _MoodCard extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? AppTheme.textPrimary : AppTheme.textSecondary,
+                color: theme.textTheme.bodyLarge?.color,
                 fontSize: 15,
                 fontWeight:
                     isSelected ? FontWeight.w600 : FontWeight.normal,

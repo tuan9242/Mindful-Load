@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
@@ -8,7 +9,12 @@ class SplashScreen extends StatelessWidget {
     // Navigate to Onboarding or Home after delay
     Future.delayed(const Duration(seconds: 2), () {
        if (context.mounted) {
-         Navigator.of(context).pushReplacementNamed('/');
+         final user = FirebaseAuth.instance.currentUser;
+         if (user != null) {
+           Navigator.of(context).pushReplacementNamed('/main');
+         } else {
+           Navigator.of(context).pushReplacementNamed('/');
+         }
        }
     });
 

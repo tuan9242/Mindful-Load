@@ -1,7 +1,5 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:mindful_load/core/theme/app_theme.dart';
-import 'package:mindful_load/features/interaction/screens/mood_check_in_screen.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -15,7 +13,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   late AnimationController _controller;
   late Animation<double> _pulseAnim;
   late Animation<double> _glowAnim;
-  int _currentPage = 0;
+  final int _currentPage = 0;
 
   @override
   void initState() {
@@ -41,8 +39,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primaryColor = theme.primaryColor;
+    final secondaryColor = theme.colorScheme.secondary;
+    final textColor = theme.textTheme.bodyLarge?.color ?? Colors.black;
+    final secondaryTextColor = theme.textTheme.bodySmall?.color ?? Colors.grey;
+
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -53,12 +57,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.self_improvement,
-                      color: AppTheme.accent, size: 20),
+                      color: secondaryColor, size: 20),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'TÂM AN',
                     style: TextStyle(
-                      color: AppTheme.textPrimary,
+                      color: textColor,
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 2,
@@ -91,13 +95,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppTheme.accent
+                                    color: secondaryColor
                                         .withOpacity(0.15 * _glowAnim.value),
                                     blurRadius: 60,
                                     spreadRadius: 20,
                                   ),
                                   BoxShadow(
-                                    color: AppTheme.primary
+                                    color: primaryColor
                                         .withOpacity(0.2 * _glowAnim.value),
                                     blurRadius: 40,
                                     spreadRadius: 10,
@@ -113,9 +117,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                 shape: BoxShape.circle,
                                 gradient: RadialGradient(
                                   colors: [
-                                    AppTheme.accent
+                                    secondaryColor
                                         .withOpacity(0.12 * _glowAnim.value),
-                                    AppTheme.primary.withOpacity(0.08),
+                                    primaryColor.withOpacity(0.08),
                                     Colors.transparent,
                                   ],
                                 ),
@@ -131,19 +135,21 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                   colors: [
-                                    AppTheme.primary.withOpacity(0.3),
-                                    AppTheme.accent.withOpacity(0.1),
+                                    primaryColor.withOpacity(0.3),
+                                    secondaryColor.withOpacity(0.1),
                                   ],
                                 ),
                                 border: Border.all(
                                   color:
-                                      AppTheme.accent.withOpacity(0.3),
+                                      secondaryColor.withOpacity(0.3),
                                   width: 1,
                                 ),
                               ),
                               child: CustomPaint(
                                 painter: _HeadPainter(
                                   glowOpacity: _glowAnim.value,
+                                  primaryColor: primaryColor,
+                                  secondaryColor: secondaryColor,
                                 ),
                               ),
                             ),
@@ -167,10 +173,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     RichText(
                       textAlign: TextAlign.center,
                       text: TextSpan(
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.textPrimary,
+                          color: textColor,
                           height: 1.3,
                         ),
                         children: [
@@ -178,7 +184,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           TextSpan(
                             text: 'Tâm An',
                             style: TextStyle(
-                              color: AppTheme.accent,
+                              color: secondaryColor,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -186,11 +192,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       ),
                     ),
                     const SizedBox(height: 16),
-                    const Text(
+                    Text(
                       'Khám phá nguyên nhân gốc rễ của sự căng thẳng và tìm lại sự cân bằng qua nhật ký cảm xúc thông minh.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: AppTheme.textSecondary,
+                        color: secondaryTextColor,
                         fontSize: 14,
                         height: 1.6,
                       ),
@@ -207,8 +213,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           height: 8,
                           decoration: BoxDecoration(
                             color: index == _currentPage
-                                ? AppTheme.primary
-                                : AppTheme.textMuted,
+                                ? primaryColor
+                                : theme.hintColor,
                             borderRadius: BorderRadius.circular(4),
                           ),
                         );
@@ -221,22 +227,22 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       height: 52,
                       child: ElevatedButton(
                         onPressed: () {
-                          Navigator.pushReplacementNamed(context, '/');
+                          Navigator.pushReplacementNamed(context, '/main');
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primary,
+                          backgroundColor: primaryColor,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
                           elevation: 8,
-                          shadowColor: AppTheme.primary.withOpacity(0.4),
+                          shadowColor: primaryColor.withOpacity(0.4),
                         ),
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              'Bắt đầu hành trình',
+                              'Khám phá ngay',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -262,8 +268,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
 class _HeadPainter extends CustomPainter {
   final double glowOpacity;
+  final Color primaryColor;
+  final Color secondaryColor;
 
-  _HeadPainter({required this.glowOpacity});
+  _HeadPainter({
+    required this.glowOpacity,
+    required this.primaryColor,
+    required this.secondaryColor,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -273,7 +285,7 @@ class _HeadPainter extends CustomPainter {
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5
-      ..color = const Color(0xFF00D4FF).withOpacity(0.7 * glowOpacity);
+      ..color = secondaryColor.withOpacity(0.7 * glowOpacity);
 
     // Head outline
     final headPath = Path();
@@ -289,7 +301,7 @@ class _HeadPainter extends CustomPainter {
     final linePaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.8
-      ..color = const Color(0xFF2563EB).withOpacity(0.6 * glowOpacity);
+      ..color = primaryColor.withOpacity(0.6 * glowOpacity);
 
     // Draw random neural connections
     final random = math.Random(42);
@@ -311,7 +323,7 @@ class _HeadPainter extends CustomPainter {
     // Draw small dots at nodes
     final dotPaint = Paint()
       ..style = PaintingStyle.fill
-      ..color = const Color(0xFF00D4FF).withOpacity(glowOpacity);
+      ..color = secondaryColor.withOpacity(glowOpacity);
 
     for (final pt in points) {
       canvas.drawCircle(pt, 2, dotPaint);
@@ -320,7 +332,7 @@ class _HeadPainter extends CustomPainter {
     // Eyes
     final eyePaint = Paint()
       ..style = PaintingStyle.fill
-      ..color = const Color(0xFF00D4FF).withOpacity(0.9 * glowOpacity);
+      ..color = secondaryColor.withOpacity(0.9 * glowOpacity);
     canvas.drawCircle(Offset(cx - 12, cy + 2), 3.5, eyePaint);
     canvas.drawCircle(Offset(cx + 12, cy + 2), 3.5, eyePaint);
 
@@ -328,7 +340,7 @@ class _HeadPainter extends CustomPainter {
     final neckPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5
-      ..color = const Color(0xFF00D4FF).withOpacity(0.5 * glowOpacity);
+      ..color = secondaryColor.withOpacity(0.5 * glowOpacity);
     canvas.drawLine(Offset(cx - 10, cy + 50), Offset(cx - 14, cy + 65), neckPaint);
     canvas.drawLine(Offset(cx + 10, cy + 50), Offset(cx + 14, cy + 65), neckPaint);
     canvas.drawLine(Offset(cx - 14, cy + 65), Offset(cx + 14, cy + 65), neckPaint);

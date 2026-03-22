@@ -19,25 +19,77 @@ class AppTheme {
     return ThemeData(
       brightness: Brightness.dark,
       scaffoldBackgroundColor: background,
+      primaryColor: primary,
+      cardColor: surfaceCard,
+      hintColor: textMuted,
+      dividerColor: borderColor,
       fontFamily: 'sans-serif',
       colorScheme: const ColorScheme.dark(
         primary: primary,
+        secondary: accent,
         surface: surface,
-        onSurface: textPrimary,
+        onSurface: Colors.white,
+        onPrimary: Colors.white,
       ),
       textTheme: const TextTheme(
-        headlineLarge: TextStyle(
-          color: textPrimary,
-          fontSize: 28,
-          fontWeight: FontWeight.bold,
-        ),
-        headlineMedium: TextStyle(
-          color: textPrimary,
-          fontSize: 22,
-          fontWeight: FontWeight.bold,
-        ),
-        bodyLarge: TextStyle(color: textSecondary, fontSize: 15),
-        bodyMedium: TextStyle(color: textSecondary, fontSize: 13),
+        headlineLarge: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+        headlineMedium: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+        titleLarge: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+        titleMedium: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+        bodyLarge: TextStyle(color: Colors.white, fontSize: 15),
+        bodyMedium: TextStyle(color: Colors.white, fontSize: 13),
+        bodySmall: TextStyle(color: textSecondary, fontSize: 12),
+      ),
+      cardTheme: CardThemeData(
+        color: surfaceCard,
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: surface,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        labelStyle: const TextStyle(color: textSecondary),
+      ),
+    );
+  }
+
+  static ThemeData get lightTheme {
+    return ThemeData(
+      brightness: Brightness.light,
+      scaffoldBackgroundColor: const Color(0xFFF9FAFB),
+      primaryColor: primary,
+      cardColor: Colors.white,
+      hintColor: Colors.grey,
+      dividerColor: Colors.grey.shade200,
+      fontFamily: 'sans-serif',
+      colorScheme: ColorScheme.light(
+        primary: primary,
+        secondary: primaryLight,
+        surface: Colors.white,
+        onSurface: Colors.black,
+        onPrimary: Colors.white,
+      ),
+      textTheme: const TextTheme(
+        headlineLarge: TextStyle(color: Colors.black, fontSize: 28, fontWeight: FontWeight.bold),
+        headlineMedium: TextStyle(color: Colors.black, fontSize: 22, fontWeight: FontWeight.bold),
+        titleLarge: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+        titleMedium: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w600),
+        bodyLarge: TextStyle(color: Colors.black, fontSize: 15),
+        bodyMedium: TextStyle(color: Colors.black, fontSize: 13),
+        bodySmall: TextStyle(color: Color(0xFF4B5563), fontSize: 12),
+      ),
+      cardTheme: CardThemeData(
+        color: Colors.white,
+        elevation: 2,
+        shadowColor: Colors.black.withOpacity(0.05),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: Colors.grey.shade100,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        labelStyle: const TextStyle(color: Color(0xFF4B5563)),
       ),
     );
   }

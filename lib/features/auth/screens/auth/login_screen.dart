@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:mindful_load/utils/notification_helper.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -9,19 +11,68 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      NotificationHelper.showTopNotification(context, 'Lưu ý', 'Vui lòng nhập Email và Mật khẩu!', true);
+      return;
+    }
+    setState(() => _isLoading = true);
+    
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
+      }
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        String msg = 'Đăng nhập thất bại';
+        if (e.code == 'user-not-found' || e.code == 'invalid-email') {
+          msg = 'Tài khoản không tồn tại.';
+        } else if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+          msg = 'Sai email hoặc mật khẩu.';
+        } else {
+          msg = e.message ?? msg;
+        }
+        NotificationHelper.showTopNotification(context, 'Đăng nhập thất bại', msg, true);
+      }
+    } catch (e) {
+      debugPrint('Login Error (Platform/Firebase): $e');
+      if (mounted) {
+        NotificationHelper.showTopNotification(context, 'Lỗi hệ thống', 'Đã có lỗi xảy ra: $e', true);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-    // Theme Colors based on provided Tailwind classes
-    final primaryColor = const Color(0xFF135BEC);
-    final bgColor = isDarkMode ? const Color(0xFF101622) : const Color(0xFFF6F6F8);
-    final surfaceColor = isDarkMode ? const Color(0xFF1C1F27) : Colors.white;
-    final borderColor = isDarkMode ? const Color(0xFF3B4354) : const Color(0xFFD1D5DB);
-    final textColor = isDarkMode ? Colors.white : const Color(0xFF111827);
-    final secondaryTextColor = isDarkMode ? const Color(0xFF9DA6B9) : const Color(0xFF9CA3AF);
-    final inputBgColor = isDarkMode ? const Color(0xFF1C1F27) : Colors.white;
+    final primaryColor = theme.primaryColor;
+    final bgColor = theme.scaffoldBackgroundColor;
+    final surfaceColor = theme.cardColor;
+    final borderColor = theme.dividerColor;
+    final textColor = theme.textTheme.bodyLarge?.color ?? Colors.black;
+    final secondaryTextColor = theme.textTheme.bodySmall?.color ?? Colors.grey;
+    final inputBgColor = isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -29,7 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           children: [
             // Header Section
-            _buildHeader(context),
+            _buildHeader(context, bgColor),
 
             // Main Content Container
             Padding(
@@ -49,17 +100,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   _buildSocialButtons(surfaceColor, borderColor, textColor),
                   const SizedBox(height: 32),
 
-                  // FaceID Hint
-                  Center(
-                    child: IconButton(
-                      iconSize: 40,
-                      color: primaryColor,
-                      icon: const Icon(Icons.face),
-                      onPressed: () {
-                        // Face ID action
-                      },
-                    ),
-                  ),
+                  // Sign Up Prompt
+                  _buildSignUpPrompt(primaryColor, secondaryTextColor),
                   const SizedBox(height: 40),
                 ],
               ),
@@ -70,7 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, Color bgColor) {
     return Stack(
       children: [
         Container(
@@ -105,7 +147,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 end: Alignment.bottomCenter,
                 colors: [
                   const Color(0xFF135BEC).withOpacity(0.2),
-                  const Color(0xFF101622).withOpacity(0.9),
+                  bgColor.withOpacity(0.9),
                 ],
               ),
             ),
@@ -145,7 +187,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const Text(
                     'Người bạn đồng hành cảm xúc của bạn',
                     style: TextStyle(
-                      color: Color(0xFFD1D5DB), // gray-300 equivalent
+                      color: Color(0xFFD1D5DB),
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),
@@ -182,13 +224,13 @@ class _LoginScreenState extends State<LoginScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Email Field
         Text(
           'Email',
           style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w500),
         ),
         const SizedBox(height: 6),
         TextField(
+          controller: _emailController,
           style: TextStyle(color: textColor),
           keyboardType: TextInputType.emailAddress,
           decoration: InputDecoration(
@@ -210,13 +252,13 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         const SizedBox(height: 20),
 
-        // Password Field
         Text(
           'Mật khẩu',
           style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w500),
         ),
         const SizedBox(height: 6),
         TextField(
+          controller: _passwordController,
           obscureText: _obscurePassword,
           style: TextStyle(color: textColor),
           decoration: InputDecoration(
@@ -244,7 +286,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
 
-        // Forgot Password Link
         const SizedBox(height: 4),
         Align(
           alignment: Alignment.centerRight,
@@ -267,12 +308,8 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
 
         const SizedBox(height: 8),
-        // Submit Button
         ElevatedButton(
-          onPressed: () {
-            // Navigate to interaction Welcome Screen after successful login
-            Navigator.pushReplacementNamed(context, '/interaction-welcome');
-          },
+          onPressed: _isLoading ? null : _handleLogin,
           style: ElevatedButton.styleFrom(
             backgroundColor: primaryColor,
             foregroundColor: Colors.white,
@@ -283,11 +320,17 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             padding: const EdgeInsets.symmetric(vertical: 14),
           ),
-          child: const Text(
-            'Đăng nhập',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          ),
+          child: _isLoading 
+            ? const SizedBox(
+                height: 20, width: 20, 
+                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+              )
+            : const Text(
+                'Đăng nhập',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
         ),
+        const SizedBox(height: 16),
       ],
     );
   }
@@ -326,14 +369,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
-            // Using a network image for Google Icon as a standard placeholder
-            icon: Image.network(
-              'https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg',
-              height: 20,
-              width: 20,
-              errorBuilder: (context, error, stackTrace) =>
-                  Icon(Icons.g_mobiledata, color: textColor, size: 24),
-            ),
+            icon: Icon(Icons.g_mobiledata, color: textColor, size: 24),
             label: Text(
               'Google',
               style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
@@ -356,6 +392,31 @@ class _LoginScreenState extends State<LoginScreen> {
             label: Text(
               'Apple',
               style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSignUpPrompt(Color primaryColor, Color secondaryTextColor) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          'Chưa có tài khoản? ',
+          style: TextStyle(color: secondaryTextColor, fontSize: 14),
+        ),
+        GestureDetector(
+          onTap: () {
+            Navigator.pushNamed(context, '/register');
+          },
+          child: Text(
+            'Đăng ký ngay',
+            style: TextStyle(
+              color: primaryColor,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
