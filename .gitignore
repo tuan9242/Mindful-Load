@@ -43,3 +43,13 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Mindful Load specific exclusions
+brain/
+.agents/
+HUONG_DAN_*.md
+*.docx
+qrcode_*.png
+*.py
+fix_everything.py
+.system_generated/

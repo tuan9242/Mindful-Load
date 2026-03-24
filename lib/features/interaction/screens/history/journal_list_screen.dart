@@ -14,7 +14,6 @@ class JournalListScreen extends StatefulWidget {
 
 class _JournalListScreenState extends State<JournalListScreen> {
   DateTime? _selectedFilterDate;
-  final ScrollController _calendarScrollController = ScrollController();
 
   @override
   void initState() {
@@ -76,7 +75,6 @@ class _JournalListScreenState extends State<JournalListScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final backgroundColor = theme.scaffoldBackgroundColor;
     final textColor = theme.textTheme.bodyLarge?.color ?? Colors.black;
     final primaryColor = theme.primaryColor;
@@ -104,9 +102,9 @@ class _JournalListScreenState extends State<JournalListScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.notes, size: 64, color: textColor.withOpacity(0.2)),
+                  Icon(Icons.notes, size: 64, color: textColor.withValues(alpha: 0.2)),
                   const SizedBox(height: 16),
-                  Text('Chưa có nhật ký nào.', style: TextStyle(color: textColor.withOpacity(0.5))),
+                  Text('Chưa có nhật ký nào.', style: TextStyle(color: textColor.withValues(alpha: 0.5))),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () => Navigator.pushNamed(context, '/mood-check-in'),
@@ -158,7 +156,7 @@ class _JournalListScreenState extends State<JournalListScreen> {
             if (groupedEntries.isEmpty) {
               sliverContent = SliverFillRemaining(
                 child: Center(
-                  child: Text('Không có nhật ký cho ngày này.', style: TextStyle(color: textColor.withOpacity(0.5))),
+                  child: Text('Không có nhật ký cho ngày này.', style: TextStyle(color: textColor.withValues(alpha: 0.5))),
                 ),
               );
             } else {
@@ -181,14 +179,15 @@ class _JournalListScreenState extends State<JournalListScreen> {
                             children: entries.map((doc) {
                               final data = doc.data() as Map<String, dynamic>;
                               final mood = data['mood'] ?? 'Bình thường';
-                              final ts = data['timestamp'] as Timestamp;
+                              final ts = data['timestamp'] as Timestamp?;
+                              final timeStr = ts != null ? _formatTime(ts.toDate()) : '--:--';
 
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 12.0),
                                 child: _buildJournalCard(
                                   context: context,
                                   title: 'Cảm thấy $mood',
-                                  time: _formatTime(ts.toDate()),
+                                  time: timeStr,
                                   iconShape: _getMoodIcon(mood),
                                   imageUrl: data['imageUrl'] ?? _getMoodImage(mood),
                                   primaryColor: primaryColor,
@@ -221,7 +220,7 @@ class _JournalListScreenState extends State<JournalListScreen> {
           return CustomScrollView(
             slivers: [
               SliverAppBar(
-                backgroundColor: theme.scaffoldBackgroundColor.withOpacity(0.95),
+                backgroundColor: theme.scaffoldBackgroundColor.withValues(alpha: 0.95),
                 surfaceTintColor: Colors.transparent,
                 pinned: true,
                 elevation: 0,
@@ -341,15 +340,15 @@ class _JournalListScreenState extends State<JournalListScreen> {
       ),
       child: Stack(
         children: [
-          Container(color: Colors.black.withOpacity(0.2)),
+          Container(color: Colors.black.withValues(alpha: 0.2)),
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
                 colors: [
-                  Colors.black.withOpacity(0.7),
-                  Colors.black.withOpacity(0.3),
+                  Colors.black.withValues(alpha: 0.7),
+                  Colors.black.withValues(alpha: 0.3),
                   Colors.transparent,
                 ],
                 stops: const [0.0, 0.6, 1.0], 
@@ -364,7 +363,7 @@ class _JournalListScreenState extends State<JournalListScreen> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(iconShape, color: Colors.white, size: 24),
@@ -390,7 +389,7 @@ class _JournalListScreenState extends State<JournalListScreen> {
                       Text(
                         time,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
+                          color: Colors.white.withValues(alpha: 0.8),
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
                         ),

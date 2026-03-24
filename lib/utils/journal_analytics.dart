@@ -1,28 +1,31 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
+/// Class xử lý phân tích dữ liệu nhật ký với tư duy của một "thám tử" và "bác sĩ tâm lý".
 class JournalAnalytics {
   final List<Map<String, dynamic>> entries;
 
   JournalAnalytics(this.entries) {
-    // We assume entries are already sorted or we sort them here if needed.
-    // However, to keep it consistent with the previous logic:
     _sortEntries();
   }
 
   void _sortEntries() {
-    // sort descending by timestamp ONCE
     entries.sort((a, b) {
       final tsA = a['timestamp'] as Timestamp?;
       final tsB = b['timestamp'] as Timestamp?;
-      if (tsA == null && tsB == null) return 0;
-      if (tsA == null) return 1;
-      if (tsB == null) return -1;
+      if (tsA == null && tsB == null) {
+        return 0;
+      }
+      if (tsA == null) {
+        return 1;
+      }
+      if (tsB == null) {
+        return -1;
+      }
       return tsB.compareTo(tsA);
     });
   }
 
-  // Constants for scoring
   static const Map<String, double> moodWeights = {
     'Hạnh phúc': 100,
     'Vui vẻ': 85,
@@ -33,209 +36,56 @@ class JournalAnalytics {
     'Giận dữ': 10,
   };
 
-  // Tag validation helper
+  double getScore(String mood) {
+    return moodWeights[mood] ?? 70;
+  }
+
   bool _isMeaningful(String tag) {
-    if (tag.length < 2) return false;
+    if (tag.length < 2) {
+      return false;
+    }
     final lower = tag.toLowerCase();
-    
-    // Catch repeated identical characters (e.g., "aaaa", "....")
-    if (RegExp(r'^(.)\1+$').hasMatch(lower)) return false;
-    
-    // Catch short nonsense like "a1", "x9"
-    if (RegExp(r'^[a-z0-9]{1,2}$').hasMatch(lower)) return false;
-    
-    // Catch gibberish without vowels (English + basic Vietnamese vowels)
-    // Vowels: a, e, i, o, u, y, and basic accented ones
-    final hasVowel = RegExp(r'[aeiouyàáạảãâầấyẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹ]').hasMatch(lower);
-    if (!hasVowel) return false;
-
-    // Catch weird clusters (3+ same consonants or too many consonants in short string)
-    if (RegExp(r'([^aeiouy\s]){4,}').hasMatch(lower)) return false;
-
+    if (RegExp(r'^(.)\1+$').hasMatch(lower)) {
+      return false;
+    }
+    final vowels = r'aeiouyàáạảãâầấyẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹ';
+    if (!RegExp('[$vowels]').hasMatch(lower)) {
+      return false;
+    }
+    if (RegExp('[^$vowels\\s]{4,}').hasMatch(lower)) {
+      return false;
+    }
     return true;
   }
 
-
-  int get totalJournals => entries.length;
-
-  // Get score for a specific mood string
-  double getScore(String mood) {
-    return moodWeights[mood] ?? 70; // default to neutral
-  }
-
-  // XP and Level Calculation
-  int get totalXP => entries.length * 50;
-  int get currentLevel => (totalXP ~/ 1000) + 1;
-  int get nextLevelXP => currentLevel * 1000;
-
-  Map<String, dynamic> calculateLevel() {
-    int level = currentLevel;
-    int xpInThisLevel = totalXP % 1000;
-    double progress = xpInThisLevel / 1000.0;
-    return {
-      'level': level,
-      'xp': totalXP,
-      'progress': progress,
-    };
-  }
-
-  // Time Filtering
   List<Map<String, dynamic>> filterByTimeRange(int index) {
     final now = DateTime.now();
     DateTime threshold;
-    
-    if (index == 0) { // Ngày (Last 24h)
+    if (index == 0) {
       threshold = now.subtract(const Duration(hours: 24));
-    } else if (index == 1) { // Tuần (Last 7 days)
+    } else if (index == 1) {
       threshold = now.subtract(const Duration(days: 7));
-    } else { // Tháng (Last 30 days)
+    } else {
       threshold = now.subtract(const Duration(days: 30));
     }
 
     return entries.where((e) {
       final ts = e['timestamp'] as Timestamp?;
-      if (ts == null) return false;
+      if (ts == null) {
+        return false;
+      }
       return ts.toDate().isAfter(threshold);
     }).toList();
   }
 
-  // Calculate Streak (Consecutive days)
-  int get currentStreak {
-    if (entries.isEmpty) return 0;
-    
-    final sortedDates = entries
-        .map((e) => (e['timestamp'] as Timestamp?)?.toDate())
-        .whereType<DateTime>()
-        .map((d) => DateTime(d.year, d.month, d.day))
-        .toSet()
-        .toList()
-      ..sort((a, b) => b.compareTo(a));
-
-    if (sortedDates.isEmpty) return 0;
-
-    final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    
-    if (sortedDates.first.isBefore(yesterday) && sortedDates.first != today) return 0;
-
-    int streak = 0;
-    DateTime currentCheck = sortedDates.first;
-
-    for (var date in sortedDates) {
-      if (date == currentCheck) {
-        streak++;
-        currentCheck = currentCheck.subtract(const Duration(days: 1));
-      } else {
-        break;
-      }
-    }
-    return streak;
-  }
-
-  // Calculate average score for a specific list of entries
-  int calculateAverageForEntries(List<Map<String, dynamic>> specificEntries) {
-    if (specificEntries.isEmpty) return 70;
-    double total = 0;
-    for (var e in specificEntries) {
-      total += getScore(e['mood'] ?? 'Bình thường');
-    }
-    return (total / specificEntries.length).round();
-  }
-
-  // Calculate Distribution for a specific list
-  Map<String, double> calculateDistributionForEntries(List<Map<String, dynamic>> specificEntries) {
-    int vui = 0, binhYen = 0, loAu = 0, buon = 0;
-    int total = specificEntries.length;
-
-    if (total == 0) return {'Vui': 0.0, 'Bình yên': 0.0, 'Lo âu': 0.0, 'Buồn': 0.0};
-
-    for (var entry in specificEntries) {
-      final mood = entry['mood'] ?? 'Bình thường';
-      if (['Hạnh phúc', 'Vui vẻ'].contains(mood)) vui++;
-      else if (['Bình thường'].contains(mood)) binhYen++;
-      else if (['Lo lắng', 'Căng thẳng'].contains(mood)) loAu++;
-      else if (['Buồn', 'Giận dữ'].contains(mood)) buon++;
-    }
-
-    return {
-      'Vui': vui / total,
-      'Bình yên': binhYen / total,
-      'Lo âu': loAu / total,
-      'Buồn': buon / total,
-    };
-  }
-
-  late final int averageScore = _calculateAverageForEntries(entries);
-  
-  int _calculateAverageForEntries(List<Map<String, dynamic>> specificEntries) {
-    if (specificEntries.isEmpty) return 70;
-    double total = 0;
-    for (var e in specificEntries) {
-      total += getScore(e['mood'] ?? 'Bình thường');
-    }
-    return (total / specificEntries.length).round();
-  }
-  
-  double get averageSleepHours {
-    if (entries.isEmpty) return 0.0;
-    double total = 0;
-    int count = 0;
-    for (var e in entries) {
-      final sleep = e['sleepHours'];
-      if (sleep != null) {
-        total += (sleep as num).toDouble();
-        count++;
-      }
-    }
-    return count > 0 ? total / count : 0.0;
-  }
-
-  double get averageEnergyLevel {
-    if (entries.isEmpty) return 0.0;
-    double total = 0;
-    int count = 0;
-    for (var e in entries) {
-      final energy = e['energyLevel'];
-      if (energy != null) {
-        total += (energy as num).toDouble();
-        count++;
-      }
-    }
-    return count > 0 ? total / count : 0.0;
-  }
-
-  late final int stressIndex = _calculateStressIndex();
-
-  int _calculateStressIndex() {
-    if (entries.isEmpty) return 0;
-    // Stress index calculated from: Low mood + low sleep + low energy + negative tags
-    double score = 0;
-    final recent = entries.take(7).toList();
-    for (var e in recent) {
-       double dayStress = 0;
-       final moodScore = getScore(e['mood'] ?? 'Bình thường');
-       if (moodScore < 40) dayStress += 30;
-       else if (moodScore < 60) dayStress += 15;
-
-       final sleep = (e['sleepHours'] as num?)?.toDouble() ?? 7.0;
-       if (sleep < 5) dayStress += 20;
-       else if (sleep < 7) dayStress += 10;
-
-       final energy = (e['energyLevel'] as num?)?.toInt() ?? 3;
-       if (energy < 2) dayStress += 20;
-       else if (energy < 3) dayStress += 10;
-
-       score += dayStress;
-    }
-    return (score / recent.length).clamp(0, 100).toInt();
-  }
-
   int get positiveDaysThisWeek {
     final now = DateTime.now();
-    Set<String> positiveDates = {};
+    final Set<String> positiveDates = {};
     for (var e in entries) {
       final ts = e['timestamp'] as Timestamp?;
-      if (ts == null) continue;
+      if (ts == null) {
+        continue;
+      }
       final date = ts.toDate();
       if (now.difference(date).inDays < 7) {
         if (getScore(e['mood'] ?? 'Bình thường') >= 70) {
@@ -246,219 +96,468 @@ class JournalAnalytics {
     return positiveDates.length;
   }
 
-  late final Map<String, String> aiInsights = _generateAIInsights();
+  // --- Hệ thống Cấp độ & XP (Infrastructure) ---
 
-  // Enhanced AI Insights with "Friend" tone
-  Map<String, String> _generateAIInsights() {
-    if (entries.isEmpty) {
-      return {
-        'summary': "Chào bạn mới! Mình là người bạn AI của bạn đây. Hãy bắt đầu ghi chép để mình có thể đồng hành và hiểu bạn hơn nhé! ✨",
-        'advice': "Mẹo nhỏ: Thêm nhãn về hoạt động sẽ giúp mình phân tích chính xác những gì làm bạn vui hay buồn đấy!",
-        'proposal': "Mình cần thêm dữ liệu về: Hoạt động thường ngày, Thời gian ngủ và Những người bạn gặp."
-      };
-    }
+  int get totalJournals => entries.length;
+  int get totalXP => entries.length * 50;
+  int get currentLevel => (totalXP ~/ 1000) + 1;
+  int get nextLevelXP => currentLevel * 1000;
 
-    int workStress = 0, lateNight = 0, positiveFamily = 0, outdoorPositive = 0;
-    int financialStress = 0, healthIssue = 0, trafficStress = 0;
-
-    for (var e in entries) {
-      final mood = e['mood'] ?? 'Bình thường';
-      final activities = List<String>.from(e['activities'] ?? []);
-      final companions = List<String>.from(e['companions'] ?? []);
-      final note = (e['note'] ?? '').toString().toLowerCase();
-      final score = getScore(mood);
-
-      // Activity-based analysis
-      if (activities.contains('Công việc') && score < 50) workStress++;
-      if (activities.contains('Vận động') && score >= 80) outdoorPositive++;
-      if (companions.contains('Gia đình') && score >= 80) positiveFamily++;
-
-      // Note-based keyword analysis
-      if (note.contains('áp lực') || note.contains('mệt') || note.contains('deadline')) workStress++;
-      if (note.contains('tiền') || note.contains('lương') || note.contains('chi phí')) financialStress++;
-      if (note.contains('đau') || note.contains('ốm') || note.contains('bệnh')) healthIssue++;
-      if (note.contains('kẹt xe') || note.contains('tắc đường')) trafficStress++;
-
-      final ts = e['timestamp'] as Timestamp?;
-      if (ts != null) {
-        final hour = ts.toDate().hour;
-        if ((hour >= 23 || hour <= 4) && score < 50) lateNight++;
-      }
-    }
-
-    String summary = "";
-    String advice = "";
-    String proposal = "Để hiểu bạn sâu hơn, mình rất mong bạn chia sẻ thêm về: ";
-
-    int nonsenseCount = 0;
-    for (var e in entries) {
-      final allTags = [
-        ...List<String>.from(e['activities'] ?? []),
-        ...List<String>.from(e['locations'] ?? []),
-        ...List<String>.from(e['companions'] ?? []),
-      ];
-      nonsenseCount += allTags.where((t) => !_isMeaningful(t)).length;
-    }
-
-    final dist = calculateDistributionForEntries(entries);
-    if (dist['Vui']! > 0.5) {
-      summary = "Woa! dạo này bạn tràn đầy năng lượng tích cực luôn. Mình thấy rất vui khi thấy bạn hạnh phúc như vậy đấy! 🌟";
-      advice = "Hãy tận dụng nguồn năng lượng này để hoàn thành những việc quan trọng hoặc đơn giản là lan tỏa niềm vui tới mọi người xung quanh nhé.";
-    } else if (dist['Lo âu']! > 0.3 || dist['Buồn']! > 0.3) {
-      summary = "Dạo này mình thấy tâm trạng bạn hơi trĩu nặng một chút. Đừng lo lắng quá nhé, mình luôn ở đây lắng nghe bạn mà. 🌿";
-      advice = "Thử dành 5-10 phút để thiền hoặc đi dạo nhẹ nhàng xem sao? Những lúc như này, yêu thương bản thân là điều quan trọng nhất.";
-    } else {
-      summary = "Mọi thứ dường như đang diễn ra khá bình yên và ổn định với bạn. Một trạng thái cân bằng rất đáng quý đấy! 🧘‍♂️";
-      advice = "Duy trì sự ổn định này bằng những thói quen tốt hiện tại bạn nhé.";
-    }
-
-    if (averageSleepHours < 6 && averageSleepHours > 0) {
-      advice += "\n\n😴 Mình thấy bạn ngủ hơi ít (TB ${averageSleepHours.toStringAsFixed(1)}h). Thiếu ngủ có thể làm tâm trạng bạn dễ cáu gắt và mệt mỏi hơn đấy.";
-    }
-    
-    if (nonsenseCount > 5) {
-      advice += "\n\n⚠️ Lưu ý nhỏ: Mình thấy một số nhãn ghi chép dường như chưa có ý nghĩa rõ ràng. Thêm các nhãn cụ thể hơn sẽ giúp mình đưa ra những lời khuyên 'đốn tim' và chính xác hơn cho bạn nhé!";
-    }
-
-    if (workStress > 1) {
-      advice += "\n\nMình nhận ra áp lực công việc hoặc deadline đang làm bạn mệt mỏi. Đừng quên nghỉ ngơi giữa giờ và hít thở sâu, bạn đã làm rất tốt rồi!";
-    }
-    if (financialStress > 0) {
-      advice += "\n\nCó vẻ chuyện tài chính đang làm bạn bận tâm. Hãy thử lập kế hoạch chi tiêu nhỏ hoặc đơn giản là hít thở thật sâu để lấy lại bình tĩnh trước khi xử lý nhé.";
-    }
-    if (healthIssue > 0) {
-      advice += "\n\nSức khỏe là vàng, đừng quên dành thời gian chăm sóc bản thân và nghỉ ngơi đầy đủ nếu cảm thấy không khỏe nhé.";
-    }
-    if (trafficStress > 0) {
-      advice += "\n\nKẹt xe thật là một thử thách kiên nhẫn! Lần tới bạn thử nghe một bản nhạc yêu thích hoặc podcast để thời gian trôi qua nhẹ nhàng hơn xem sao.";
-    }
-    if (outdoorPositive > 0) {
-      advice += "\n\nCứ tiếp tục vận động nhé! Đây chính là 'liều thuốc' tuyệt vời giúp tâm trạng bạn cải thiện rõ rệt đấy.";
-    }
-
-    List<String> neededData = [];
-    if (lateNight > 0) {
-      proposal += "Giờ ngủ cụ thể (để mình giúp bạn tối ưu giấc ngủ), ";
-      advice += "\n\nNgủ đủ giấc sẽ giúp bạn có một tinh thần minh mẫn hơn vào ngày mai. Đêm nay hãy ngủ sớm một chút nhé! 🌙";
-    }
-    if (workStress > 0) neededData.add("Cảm xúc khi hoàn thành việc");
-    if (entries.length < 10) neededData.add("Thêm nhiều nhãn chi tiết");
-    
-    proposal += neededData.isEmpty ? "Cảm xúc chi tiết sau mỗi sự kiện." : neededData.join(", ");
-
+  Map<String, dynamic> calculateLevel() {
     return {
-      'summary': summary,
-      'advice': advice,
-      'proposal': proposal,
+      'level': currentLevel,
+      'xp': totalXP,
+      'progress': (totalXP % 1000) / 1000.0,
     };
   }
 
-  // Generate impact factors for analysis screen
-  List<Map<String, dynamic>> calculateImpactFactors() {
-    Map<String, int> positiveFactors = {};
-    Map<String, int> negativeFactors = {};
+  // --- Các chỉ số thống kê & Stress Index ---
 
-    for (var e in entries) {
-      final mood = e['mood'] ?? 'Bình thường';
-      final activities = List<String>.from(e['activities'] ?? []);
-      final locations = List<String>.from(e['locations'] ?? []);
-      final companions = List<String>.from(e['companions'] ?? []);
-      final score = getScore(mood);
+  int calculateAverageForEntries(List<Map<String, dynamic>> en) {
+    return _calculateAverage(en);
+  }
 
-      final allTags = [...activities, ...locations, ...companions]
-          .where((t) => _isMeaningful(t)).toList();
-      for (var tag in allTags) {
-        if (score >= 80) positiveFactors[tag] = (positiveFactors[tag] ?? 0) + 1;
-        if (score <= 40) negativeFactors[tag] = (negativeFactors[tag] ?? 0) + 1;
+  late final int averageScore = _calculateAverage(entries);
+  int _calculateAverage(List<Map<String, dynamic>> en) {
+    if (en.isEmpty) {
+      return 70;
+    }
+    final double total = en.map((e) => getScore(e['mood'] ?? 'Bình thường')).reduce((a, b) => a + b);
+    return (total / en.length).round();
+  }
+
+  double _avgField(String field) {
+    final valid = entries.map((e) => e[field] as num?).whereType<num>();
+    if (valid.isEmpty) {
+      return 0.0;
+    }
+    return (valid.reduce((a, b) => a + b) / valid.length).toDouble();
+  }
+  double get averageSleepHours => _avgField('sleepHours');
+  double get averageEnergyLevel => _avgField('energyLevel');
+
+  late final int stressIndex = _calculateStressIndex();
+  int _calculateStressIndex() {
+    if (entries.isEmpty) {
+      return 0;
+    }
+    double totalScore = 0;
+    final recent = entries.take(7).toList();
+    for (var e in recent) {
+      double dayStress = 0;
+      final moodScore = getScore(e['mood'] ?? 'Bình thường');
+      if (moodScore < 40) {
+        dayStress += 30;
+      } else if (moodScore < 60) {
+        dayStress += 15;
+      }
+
+      final sleep = (e['sleepHours'] as num?)?.toDouble() ?? 7.0;
+      if (sleep < 5) {
+        dayStress += 20;
+      } else if (sleep < 7) {
+        dayStress += 10;
+      }
+
+      final energy = (e['energyLevel'] as num?)?.toInt() ?? 3;
+      if (energy < 2) {
+        dayStress += 20;
+      } else if (energy < 3) {
+        dayStress += 10;
+      }
+      totalScore += dayStress;
+    }
+    return (totalScore / recent.length).clamp(0, 100).toInt();
+  }
+
+  // --- UI Insights Generation (Mental Health Detective) ---
+
+  late final Map<String, String> aiInsights = _generateDiagnosticInsights();
+
+  Map<String, String> _generateDiagnosticInsights() {
+    if (entries.isEmpty) {
+      return {
+        'summary': "Chào bạn! Mình là Tâm An, bác sĩ tâm lý AI của riêng bạn. 🌿",
+        'advice': "Hãy ghi lại cảm xúc đầu tiên để mình có thể bắt đầu hành trình 'thám tử' tìm hiểu sâu về thế giới nội tâm của bạn nhé.",
+        'proposal': "Gợi ý: Chia sẻ về giấc ngủ và các hoạt động để mình tìm ra sự liên kết ẩn giấu."
+      };
+    }
+
+    final patterns = identifyTimePatterns();
+    final correlations = _discoverTopCorrelations();
+    final thresholds = _calculateAdaptiveThresholds();
+    final transitions = synthesizeTransitions();
+    
+    final latestMoods = entries.take(3).toList();
+    final List<double> scores = latestMoods.map((e) => getScore(e['mood'] ?? 'Bình thường')).toList();
+    
+    // Ensure we have at least 3 scores for proper trend detection, padding if necessary
+    while (scores.length < 3) {
+      scores.add(averageScore.toDouble());
+    }
+
+    final String summary = _pickEmpathicGreeting(averageScore, scores);
+
+    final List<String> findings = [];
+    
+    // 1. Time Pattern
+    final double? worstDayScore = patterns['worstDayScore'] as double?;
+    if (worstDayScore != null && worstDayScore < thresholds['moodLow']!) {
+      final days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+      findings.add("Dữ liệu chỉ ra một mô thức: bạn thường dễ mệt mỏi nhất vào các ngày ${days[(patterns['worstDay'] as int) % 7]}.");
+    }
+
+    // 2. Dynamic Correlations (Personalized Learning)
+    final positiveTriggers = correlations.where((c) => c['impact'] > 10).take(2).toList();
+    final negativeTriggers = correlations.where((c) => c['impact'] < -10).take(2).toList();
+
+    if (negativeTriggers.isNotEmpty) {
+      final t = negativeTriggers.first;
+      String impactText = t['impact'].abs() > 30 ? "ảnh hưởng rất lớn" : "có dấu hiệu gây áp lực";
+      findings.add("Mình nhận thấy '${t['tag']}' $impactText đến tâm trạng của bạn dạo gần đây.");
+    }
+
+    // 3. Positive Contrast (Motivation) - Only if current mood is low or dropping
+    final isCurrentlyLow = scores[0] <= 50;
+    final isDropping = scores[0] < scores[1] - 20;
+    
+    if ((isCurrentlyLow || isDropping) && positiveTriggers.isNotEmpty) {
+      final joy = positiveTriggers.first['tag'];
+      findings.add("Trong quá khứ, mình thấy bạn thường cảm thấy rất tốt khi gắn bó với '$joy'. Có lẽ đây là lúc bạn cần tìm lại nguồn năng lượng đó.");
+    }
+
+    // 4. Transitions
+    if (transitions.isNotEmpty) {
+      final lastT = transitions.last;
+      if (getScore(lastT['to'] as String) < getScore(lastT['from'] as String) - 30) {
+        findings.add("Tôi nhận thấy một sự sụt giảm tâm trạng rõ rệt từ '${lastT['from']}' xuống '${lastT['to']}' ngay sau khi có sự xuất hiện của '${lastT['trigger']}'.");
       }
     }
 
-    List<Map<String, dynamic>> impacts = [];
+    final String advice = findings.isNotEmpty 
+        ? findings.join("\n\n") 
+        : "Mình đang lặng lẽ quan sát và học hỏi từ những thói quen của bạn. Hãy tiếp tục chia sẻ để chúng ta tìm ra những quy luật ẩn giấu nhé.";
     
-    negativeFactors.forEach((key, value) {
-      impacts.add({
-        'title': key,
-        'subtitle': 'Tần suất gây căng thẳng: ${value > 2 ? 'Cao' : 'Trung bình'}',
-        'impact': '-${(value * 8).clamp(5, 40)}%',
-        'colorValue': 0xFFF44336,
-      });
-    });
+    final List<String> rootTags = negativeTriggers.map((t) => t['tag'] as String).toList();
+    final isCrisis = scores.every((s) => s <= 40);
+    final String proposal = _generatePsychologicalAdvice(averageScore, rootTags, isCrisis);
 
-    positiveFactors.forEach((key, value) {
-      impacts.add({
-        'title': key,
-        'subtitle': 'Nguồn cảm hứng tích cực',
-        'impact': '+${(value * 10).clamp(5, 50)}%',
-        'colorValue': 0xFF4CAF50,
-      });
-    });
+    return {'summary': summary, 'advice': advice, 'proposal': proposal};
+  }
 
-    if (impacts.isEmpty) {
-      impacts.add({
-        'title': 'Đang phân tích...',
-        'subtitle': 'Ghi thêm nhật ký để thấy rõ tác nhân nhé!',
-        'impact': '0%',
-        'colorValue': 0xFF9E9E9E,
-      });
+  Map<String, double> _calculateAdaptiveThresholds() {
+    if (entries.isEmpty) return {'moodLow': 50.0, 'sleepLow': 6.0};
+    final avgMood = averageScore.toDouble();
+    final avgSleep = averageSleepHours;
+    return {
+      'moodLow': (avgMood - 15).clamp(20, 50),
+      'sleepLow': (avgSleep - 1.0).clamp(4, 7),
+    };
+  }
+
+  List<Map<String, dynamic>> _discoverTopCorrelations() {
+    final Map<String, List<double>> tagScores = {};
+    for (var e in entries) {
+      final s = getScore(e['mood'] ?? 'Bình thường');
+      final act = e['activities'] is List ? List.from(e['activities'] as List) : [];
+      final loc = e['locations'] is List ? List.from(e['locations'] as List) : [];
+      final com = e['companions'] is List ? List.from(e['companions'] as List) : [];
+      final all = [...act, ...loc, ...com].whereType<String>().where(_isMeaningful).toSet();
+      for (var t in all) {
+        tagScores.putIfAbsent(t, () => []).add(s);
+      }
+    }
+    
+    final List<Map<String, dynamic>> correlations = [];
+    final avgGlobal = averageScore.toDouble();
+    
+    tagScores.forEach((tag, scores) {
+      if (scores.length >= 2) {
+        final avgTag = scores.reduce((a, b) => a + b) / scores.length;
+        correlations.add({
+          'tag': tag,
+          'impact': (avgTag - avgGlobal),
+          'count': scores.length,
+        });
+      }
+    });
+    
+    correlations.sort((a, b) => (b['impact'] as double).abs().compareTo((a['impact'] as double).abs()));
+    return correlations;
+  }
+
+  // --- Advanced Diagnostic Methods ---
+
+  Map<String, dynamic> identifyTimePatterns() {
+    if (entries.isEmpty) {
+      return {};
+    }
+    final Map<int, List<double>> weekdayScores = {};
+    final Map<int, List<double>> hourScores = {};
+    for (var e in entries) {
+      final ts = e['timestamp'] as Timestamp?;
+      if (ts == null) {
+        continue;
+      }
+      final d = ts.toDate();
+      final s = getScore(e['mood'] ?? 'Bình thường');
+      weekdayScores.putIfAbsent(d.weekday, () => []).add(s);
+      hourScores.putIfAbsent(d.hour, () => []).add(s);
+    }
+    
+    int worstD = -1; 
+    double lowD = 101.0;
+    weekdayScores.forEach((d, sc) {
+      final a = sc.reduce((a, b) => a + b) / sc.length;
+      if (a < lowD) {
+        lowD = a;
+        worstD = d;
+      }
+    });
+    
+    int worstH = -1; 
+    double lowH = 101.0;
+    hourScores.forEach((h, sc) {
+      final a = sc.reduce((a, b) => a + b) / sc.length;
+      if (a < lowH) {
+        lowH = a;
+        worstH = h;
+      }
+    });
+    
+    return {'worstDay': worstD, 'worstDayScore': lowD, 'worstHour': worstH, 'worstHourScore': lowH};
+  }
+
+  Map<String, int> calculateLifestyleCorrelations() {
+    if (entries.isEmpty) {
+      return {};
+    }
+    final List<double> littleS = [];
+    final List<double> enoughS = [];
+    final List<double> ex = [];
+    final List<double> noEx = [];
+
+    for (var e in entries) {
+      final s = getScore(e['mood'] ?? 'Bình thường');
+      final sl = (e['sleepHours'] as num?)?.toDouble() ?? 0.0;
+      final actObj = e['activities'];
+      final List<String> act = actObj is List ? List<String>.from(actObj) : [];
+
+      if (sl > 0) {
+        if (sl < 6) {
+          littleS.add(s);
+        } else {
+          enoughS.add(s);
+        }
+      }
+      if (act.any((a) => a.contains('Vận động') || a.contains('Thể thao'))) {
+        ex.add(s);
+      } else if (act.isNotEmpty) {
+        noEx.add(s);
+      }
+    }
+    
+    double sImpact = 0;
+    double eImpact = 0;
+    if (littleS.isNotEmpty && enoughS.isNotEmpty) {
+      final aL = littleS.reduce((a, b) => a + b) / littleS.length;
+      final aE = enoughS.reduce((a, b) => a + b) / enoughS.length;
+      sImpact = (aE - aL) / aE;
+    }
+    if (ex.isNotEmpty && noEx.isNotEmpty) {
+      final aX = ex.reduce((a, b) => a + b) / ex.length;
+      final aNX = noEx.reduce((a, b) => a + b) / noEx.length;
+      eImpact = (aX - aNX) / aX;
+    }
+    return {'sleepImpact': (sImpact * 100).round(), 'exerciseImpact': (eImpact * 100).round()};
+  }
+
+  List<Map<String, dynamic>> synthesizeTransitions() {
+    if (entries.length < 2) {
+      return [];
+    }
+    final sorted = List<Map<String, dynamic>>.from(entries);
+    sorted.sort((a, b) {
+      final tsA = a['timestamp'] as Timestamp;
+      final tsB = b['timestamp'] as Timestamp;
+      return tsA.compareTo(tsB);
+    });
+    
+    final List<Map<String, dynamic>> transitions = [];
+    for (int i = 0; i < sorted.length - 1; i++) {
+      final DateTime t1 = (sorted[i]['timestamp'] as Timestamp).toDate();
+      final DateTime t2 = (sorted[i+1]['timestamp'] as Timestamp).toDate();
+      if (t2.difference(t1).inMinutes < 60) {
+        final actObj = sorted[i+1]['activities'];
+        final List<dynamic> act = actObj is List ? actObj : [];
+        transitions.add({
+          'from': sorted[i]['mood'] ?? 'Bình thường',
+          'to': sorted[i+1]['mood'] ?? 'Bình thường',
+          'trigger': act.isNotEmpty ? act.first : 'bối cảnh hiện tại',
+        });
+      }
+    }
+    return transitions;
+  }
+
+  String _pickEmpathicGreeting(int avgScore, List<double> last3Scores) {
+    if (last3Scores.length < 3) return "Mình ở đây cùng bạn, hãy cứ thư thả nhé. ✨";
+
+    final m1 = last3Scores[0]; // Most recent
+    final m2 = last3Scores[1];
+    final m3 = last3Scores[2];
+
+    // Scenario 1: Recovery (Tệ -> Vui -> Vui)
+    if (m1 >= 70 && m2 >= 70 && m3 <= 40) {
+      return "Thật tuyệt vời khi thấy bạn đã vượt qua được khoảnh khắc khó khăn và đang lấy lại năng lượng tích cực! ✨";
     }
 
+    // Scenario 2: Maintaining Highs
+    if (m1 >= 80 && m2 >= 80) {
+      return "Chào bạn! Rất vui được thấy chuỗi cảm xúc rạng rỡ của bạn dạo gần đây. 🌟";
+    }
+
+    // Scenario 3: Sudden Drop (Tốt -> Tệ)
+    if (m1 <= 40 && m2 >= 70) {
+      return "Mình nhận thấy một sự sụt giảm tâm trạng đột ngột. Chuyện gì vừa diễn ra khiến bạn thấy trĩu nặng vậy? 🌧️";
+    }
+
+    // Scenario 4: Persistent Low
+    if (m1 <= 40 && m2 <= 40) {
+      return "Mình biết bạn đang trải qua những giờ phút rất khó khăn. Tâm An luôn ở đây lắng nghe bạn. 🌱";
+    }
+
+    // Default based on current mood
+    if (m1 >= 80) {
+      return "Woa! Năng lượng của bạn dạo này thật đáng ngưỡng mộ. 🌟";
+    } else if (m1 >= 60) {
+      return "Mọi thứ dường như đang diễn ra khá bình yên và cân bằng. 🧘‍♂️";
+    } else {
+      return "Chào bạn, thỉnh thoảng lòng trĩu lại một chút cũng không sao, mình vẫn ở đây nhé. ✨";
+    }
+  }
+
+  String _generatePsychologicalAdvice(int score, List<String> causes, bool isCrisis) {
+    if (isCrisis) {
+      return "Dành cho bạn: Hãy thử kỹ thuật hít thở 4-7-8 hoặc đếm ngược 5-4-3-2-1 để ổn định lại tâm trí ngay lập tức nhé.";
+    }
+
+    if (score < 60) {
+      if (causes.any((c) => c.contains('Làm việc') || c.contains('Công việc'))) {
+        return "Lời khuyên: Công việc dường như đang chiếm lấy sự bình yên của bạn. Hãy thử đặt ranh giới 'không làm việc' sau 7 giờ tối nhé.";
+      }
+      if (causes.any((c) => c.contains('Trường học') || c.contains('Học tập'))) {
+        return "Lời khuyên: Áp lực học tập có thể rất lớn. Thử phương pháp Pomodoro (25p học - 5p nghỉ) để não bộ được thư giãn nhé.";
+      }
+      if (causes.any((c) => c.contains('Gia đình'))) {
+        return "Dành cho bạn: Những mâu thuẫn gia đình thường rất đau đớn. Hãy thử dành 5 phút viết ra giấy những gì bạn đang cảm thấy nhé.";
+      }
+      return "Dành cho bạn: Đừng quên đặt ranh giới cho công việc và dành thời gian ít nhất 15 phút mỗi ngày cho bản thân.";
+    }
+    
+    if (entries.length < 5) {
+      return "Gợi ý: Mình rất muốn thấu hiểu bạn hơn. Hãy thử ghi chép thêm 1-2 nhãn chi tiết mỗi khi check-in nhé.";
+    }
+
+    return "Lời khuyên: Hãy tiếp tục nuôi dưỡng những thói quen tích cực và ghi lại ít nhất một điều bạn biết ơn mỗi ngày.";
+  }
+
+  // --- Visualization Helpers ---
+
+  Map<String, double> calculateDistribution() {
+    if (entries.isEmpty) {
+      return {'Vui': 0.0, 'Bình yên': 0.0, 'Lo âu': 0.0, 'Buồn': 0.0};
+    }
+    int v = 0, y = 0, l = 0, b = 0;
+    for (var e in entries) {
+      final m = e['mood'] ?? 'Bình thường';
+      if (['Hạnh phúc', 'Vui vẻ'].contains(m)) {
+        v++;
+      } else if (['Bình thường'].contains(m)) {
+        y++;
+      } else if (['Lo lắng', 'Căng thẳng'].contains(m)) {
+        l++;
+      } else if (['Buồn', 'Giận dữ'].contains(m)) {
+        b++;
+      }
+    }
+    final t = entries.length;
+    return {'Vui': v / t, 'Bình yên': y / t, 'Lo âu': l / t, 'Buồn': b / t};
+  }
+
+  List<double> calculateDailyAverages(int days) {
+    final now = DateTime.now();
+    return List.generate(days, (i) {
+      final target = now.subtract(Duration(days: days - 1 - i));
+      final dayEn = entries.where((e) {
+        final d = (e['timestamp'] as Timestamp?)?.toDate();
+        return d != null && d.year == target.year && d.month == target.month && d.day == target.day;
+      }).toList();
+      return _calculateAverage(dayEn).toDouble();
+    });
+  }
+
+  List<Map<String, dynamic>> calculateImpactFactors() {
+    final Map<String, int> pos = {};
+    final Map<String, int> neg = {};
+    for (var e in entries) {
+      final act = e['activities'] is List ? List.from(e['activities'] as List) : [];
+      final loc = e['locations'] is List ? List.from(e['locations'] as List) : [];
+      final com = e['companions'] is List ? List.from(e['companions'] as List) : [];
+      final all = [...act, ...loc, ...com].whereType<String>().where(_isMeaningful);
+      final s = getScore(e['mood'] ?? 'Bình thường');
+      for (var t in all) {
+        if (s >= 80) {
+          pos[t] = (pos[t] ?? 0) + 1;
+        }
+        if (s <= 40) {
+          neg[t] = (neg[t] ?? 0) + 1;
+        }
+      }
+    }
+    final List<Map<String, dynamic>> impacts = [
+      ...neg.entries.map((e) => {'title': e.key, 'subtitle': 'Tác nhân căng thẳng', 'impact': '-${(e.value * 12).clamp(5, 45)}%', 'colorValue': 0xFFF44336}),
+      ...pos.entries.map((e) => {'title': e.key, 'subtitle': 'Cảm hứng tích cực', 'impact': '+${(e.value * 15).clamp(5, 55)}%', 'colorValue': 0xFF4CAF50}),
+    ];
+    if (impacts.isEmpty) {
+      return [{'title': 'Đang phân tích...', 'subtitle': 'Ghi thêm nhật ký nhé', 'impact': '0%', 'colorValue': 0xFF9E9E9E}];
+    }
     impacts.sort((a, b) => b['impact'].toString().compareTo(a['impact'].toString()));
     return impacts;
   }
 
-  // Helper for dashboard chart
-  List<double> calculateDailyAverages(int days) {
-    if (entries.isEmpty) return List.filled(days, 70.0);
-    
-    final now = DateTime.now();
-    List<double> averages = [];
-    
-    for (int i = days - 1; i >= 0; i--) {
-      final targetDate = now.subtract(Duration(days: i));
-      final dayEntries = entries.where((e) {
-        final ts = e['timestamp'] as Timestamp?;
-        if (ts == null) return false;
-        final d = ts.toDate();
-        return d.year == targetDate.year && d.month == targetDate.month && d.day == targetDate.day;
-      }).toList();
-      
-      if (dayEntries.isEmpty) {
-        averages.add(70.0);
+  int get currentStreak {
+    if (entries.isEmpty) {
+      return 0;
+    }
+    final List<DateTime> dates = entries.map((e) => (e['timestamp'] as Timestamp?)?.toDate()).whereType<DateTime>().map((d) => DateTime(d.year, d.month, d.day)).toSet().toList();
+    dates.sort((a, b) => b.compareTo(a));
+    final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    if (dates.isEmpty) {
+      return 0;
+    }
+    if (dates.first.isBefore(today.subtract(const Duration(days: 1))) && dates.first != today) {
+      return 0;
+    }
+    int s = 0; 
+    DateTime c = dates.first;
+    for (var d in dates) {
+      if (d == c) {
+        s++; 
+        c = c.subtract(const Duration(days: 1));
       } else {
-        double sum = 0;
-        for (var e in dayEntries) sum += getScore(e['mood'] ?? 'Bình thường');
-        averages.add(sum / dayEntries.length);
+        break;
       }
     }
-    return averages;
+    return s;
   }
 
-  // Legacy distribution for dashboard
-  Map<String, double> calculateDistribution() {
-    return calculateDistributionForEntries(entries);
-  }
-
-  // Legacy dominant emotion getter
-  String get dominantEmotion {
-    final dist = calculateDistribution();
-    var maxVal = -1.0;
-    var dominant = "Bình thường";
-    dist.forEach((key, value) {
-      if (value > maxVal) {
-        maxVal = value;
-        dominant = key;
-      }
-    });
-    return dominant;
-  }
-
-  // Aggregation helper for charts (within X minutes)
+  /// Nhóm các bản ghi theo khoảng thời gian để hiển thị trên biểu đồ.
   List<Map<String, dynamic>> getAggregatedEntries(int intervalMinutes) {
-    if (entries.isEmpty) return [];
-    
-    // entries is sorted descending, so we need reverse for chronological charts
+    if (entries.isEmpty) {
+      return [];
+    }
     final chronological = entries.reversed.toList();
-    
     final List<Map<String, dynamic>> aggregated = [];
     Map<String, dynamic>? currentGroup;
     
@@ -480,11 +579,30 @@ class JournalAnalytics {
         }
       }
     }
+    return aggregated;
+  }
+
+  /// Gom nhóm dữ liệu giấc ngủ theo ngày (Mỗi ngày 1 điểm duy nhất).
+  List<Map<String, dynamic>> getDailySleepEntries() {
+    if (entries.isEmpty) return [];
+
+    final Map<String, Map<String, dynamic>> dailyMap = {};
     
-    // Return last 7 groups by default for line charts
-    return aggregated.length > 7 
-        ? aggregated.sublist(aggregated.length - 7) 
-        : aggregated;
+    // Sort chronological first
+    final chronological = entries.reversed.toList();
+    
+    for (var entry in chronological) {
+      final ts = entry['timestamp'] as Timestamp?;
+      if (ts == null) continue;
+      
+      final dateStr = DateFormat('yyyy-MM-dd').format(ts.toDate());
+      
+      // Nghiệm vụ: Lấy bản ghi cuối cùng của ngày đó làm đại diện cho giấc ngủ
+      dailyMap[dateStr] = Map<String, dynamic>.from(entry);
+    }
+    
+    final result = dailyMap.values.toList();
+    result.sort((a, b) => (a['timestamp'] as Timestamp).compareTo(b['timestamp'] as Timestamp));
+    return result;
   }
 }
-

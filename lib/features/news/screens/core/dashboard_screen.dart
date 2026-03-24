@@ -23,10 +23,9 @@ class _DashboardScreenState extends State<DashboardScreen>
   Color get textSlate500 => Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade400 : const Color(0xFF64748B);
   Color get textSlate400 => Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade500 : const Color(0xFF94A3B8);
 
-  // Added missing theme getters
   bool get isDark => Theme.of(context).brightness == Brightness.dark;
   Color get primary => const Color(0xFF135BEC);
-  Color get _primaryColor => primary; // Alias for safety
+  Color get _primaryColor => primary; 
   Color get _textColor => textSlate900;
   Color get _textMuted => textSlate500;
   Color get _borderColor => Theme.of(context).dividerColor;
@@ -34,7 +33,6 @@ class _DashboardScreenState extends State<DashboardScreen>
   // Status Colors
   static const Color successGreen = Color(0xFF0BDA5E);
   static const Color warningOrange = Color(0xFFF97316);
-  static const Color deepOrange = Colors.orange;
 
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
@@ -78,7 +76,6 @@ class _DashboardScreenState extends State<DashboardScreen>
       body: SafeArea(
         child: Stack(
           children: [
-            // Scrollable Content
             Positioned.fill(
               child: StreamBuilder<QuerySnapshot>(
                 stream: _journalsStream,
@@ -116,9 +113,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                 },
               ),
             ),
-
-
-            // Bottom Navigation Bar handled by MainScreen
           ],
         ),
       ),
@@ -128,24 +122,20 @@ class _DashboardScreenState extends State<DashboardScreen>
   Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      color: _bgColor.withOpacity(
-        0.95,
-      ), // backdrop blur effect simulation
+      color: _bgColor.withValues(alpha: 0.95),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             children: [
               GestureDetector(
-                onTap: () {
-                  Navigator.pushNamed(context, '/profile');
-                },
+                onTap: () => Navigator.pushNamed(context, '/profile'),
                 child: Container(
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-              color: primary.withAlpha(20),
+                    color: primary.withAlpha(20),
                     image: const DecorationImage(
                       image: NetworkImage(
                         "https://lh3.googleusercontent.com/aida-public/AB6AXuDzzFXxR8A_hXhOONYISTASA9gO_kP7A_ddAf1jDsXHPU5iXubMTCSC4zVPUWsC_iC8x4-eG3nYt1PR-bDFy-T992-yjMGFHwYWiimTMgBuHaCjEqSscDUcel73pL7mMSeQJPmPh2GTb9sf461RRszRn6NzwB1uEkx2JO3NNXWOl5JlYqxjm3Opx8YxTy_1FZQDfDy5M5R_s3gdGml4otkekn5ACwDF04TuPGaSY1gCw4fAEKCpp098N01OpP8lCeW0-myxA84H8lwi",
@@ -168,16 +158,10 @@ class _DashboardScreenState extends State<DashboardScreen>
             ],
           ),
           IconButton(
-            onPressed: () {
-              Navigator.pushNamed(context, '/notifications');
-            },
+            onPressed: () => Navigator.pushNamed(context, '/notifications'),
             icon: Stack(
               children: [
-                Icon(
-                  Icons.notifications_outlined,
-                  size: 26,
-                  color: _textColor,
-                ),
+                Icon(Icons.notifications_outlined, size: 26, color: _textColor),
                 Positioned(
                   top: 2,
                   right: 2,
@@ -204,10 +188,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                 ),
               ],
             ),
-            style: IconButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              hoverColor: Colors.grey.shade200,
-            ),
           ),
         ],
       ),
@@ -217,15 +197,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   Widget _buildGreeting() {
     final user = FirebaseAuth.instance.currentUser;
     final hour = DateTime.now().hour;
-    String timeGreeting;
-    if (hour < 12) {
-      timeGreeting = 'buổi sáng';
-    } else if (hour < 18) {
-      timeGreeting = 'buổi chiều';
-    } else {
-      timeGreeting = 'buổi tối';
-    }
-    // Lấy tên từ email: abc@gmail.com → abc
+    String timeGreeting = hour < 12 ? 'buổi sáng' : (hour < 18 ? 'buổi chiều' : 'buổi tối');
     final displayName = user?.email?.split('@').first ?? 'bạn';
 
     return Padding(
@@ -262,7 +234,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         borderRadius: BorderRadius.circular(24),
         boxShadow: isDark ? [] : [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -279,51 +251,33 @@ class _DashboardScreenState extends State<DashboardScreen>
                 children: [
                   Text(
                     "Biến động cảm xúc",
-                    style: TextStyle(
-                      color: textSlate900,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(color: textSlate900, fontSize: 16, fontWeight: FontWeight.bold),
                   ),
-                  SizedBox(height: 4),
-                  Text(
-                    "7 ngày qua",
-                    style: TextStyle(color: textSlate400, fontSize: 12),
-                  ),
+                  const SizedBox(height: 4),
+                  Text("7 ngày qua", style: TextStyle(color: textSlate400, fontSize: 12)),
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: _primaryColor.withOpacity(0.1),
+                  color: _primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   "${analytics.averageScore} điểm TB",
-                  style: TextStyle(
-                    color: _primaryColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(color: _primaryColor, fontSize: 12, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
           ),
           SizedBox(
-            height: 140, // Slightly taller
+            height: 140,
             child: LineChart(
               LineChartData(
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
-                  getDrawingHorizontalLine: (value) => FlLine(
-                    color: _borderColor,
-                    strokeWidth: 1,
-                    dashArray: [5, 5],
-                  ),
+                  getDrawingHorizontalLine: (value) => FlLine(color: _borderColor, strokeWidth: 1, dashArray: [5, 5]),
                 ),
                 titlesData: FlTitlesData(
                   show: true,
@@ -335,10 +289,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                       reservedSize: 30,
                       getTitlesWidget: (val, meta) {
                         if (val == 0 || val == 50 || val == 100) {
-                          return Text(
-                            val.toInt().toString(),
-                            style: TextStyle(color: textSlate500, fontSize: 10, fontWeight: FontWeight.bold),
-                          );
+                          return Text(val.toInt().toString(), style: TextStyle(color: textSlate500, fontSize: 10, fontWeight: FontWeight.bold));
                         }
                         return const SizedBox.shrink();
                       },
@@ -351,12 +302,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                       getTitlesWidget: (val, meta) {
                         if (val != val.toInt().toDouble()) return const SizedBox.shrink();
                         final int index = val.toInt();
-                        final days = analytics.calculateDailyAverages(7);
-                        if (index >= 0 && index < days.length) {
-                           return Text(
-                             "${index + 1}",
-                             style: TextStyle(color: textSlate500, fontSize: 10, fontWeight: FontWeight.bold),
-                           );
+                        if (index >= 0 && index < 7) {
+                           return Text("${index + 1}", style: TextStyle(color: textSlate500, fontSize: 10, fontWeight: FontWeight.bold));
                         }
                         return const SizedBox.shrink();
                       },
@@ -364,62 +311,13 @@ class _DashboardScreenState extends State<DashboardScreen>
                   ),
                 ),
                 borderData: FlBorderData(show: false),
-                lineTouchData: LineTouchData(
-                  touchTooltipData: LineTouchTooltipData(
-                    getTooltipColor: (_) => Colors.blueGrey.withAlpha(200),
-                    getTooltipItems: (touchedSpots) {
-                      return touchedSpots.map((spot) {
-                        return LineTooltipItem(
-                          '${spot.y.toInt()}',
-                          const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        );
-                      }).toList();
-                    },
-                    tooltipPadding: const EdgeInsets.all(8),
-                    tooltipMargin: 8,
-                    fitInsideHorizontally: true,
-                    fitInsideVertically: true,
-                  ),
-                  handleBuiltInTouches: true,
-                ),
-                minX: 0,
-                maxX: 6,
-                minY: 0,
-                maxY: 100,
                 lineBarsData: [
                   LineChartBarData(
-                    spots: analytics.calculateDailyAverages(7).asMap().entries.map((e) {
-                      return FlSpot(e.key.toDouble(), e.value);
-                    }).toList(),
+                    spots: analytics.calculateDailyAverages(7).asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value)).toList(),
                     isCurved: true,
-                    curveSmoothness: 0.35,
                     color: _primaryColor,
                     barWidth: 4,
-                    isStrokeCapRound: true,
-                    dotData: FlDotData(
-                      show: true,
-                      checkToShowDot: (spot, barData) => spot.x == 6, // Only show last dot
-                      getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-                        radius: 6,
-                        color: Colors.white,
-                        strokeWidth: 3,
-                        strokeColor: _primaryColor,
-                      ),
-                    ),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      gradient: LinearGradient(
-                        colors: [
-                          _primaryColor.withAlpha(80),
-                          _primaryColor.withAlpha(0),
-                        ],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
-                    ),
+                    dotData: const FlDotData(show: false),
                   ),
                 ],
               ),
@@ -432,7 +330,6 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   Widget _buildEmotionDistributionCard(JournalAnalytics analytics) {
     final dist = analytics.calculateDistribution();
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
@@ -440,99 +337,37 @@ class _DashboardScreenState extends State<DashboardScreen>
         decoration: BoxDecoration(
           color: _surfaceColor,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: isDark ? [] : [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 2,
-              offset: const Offset(0, 1),
-            ),
-          ],
           border: Border.all(color: _borderColor),
         ),
         child: Column(
           children: [
-            Row(
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Phân bố cảm xúc",
-                      style: TextStyle(
-                        color: textSlate900,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    RichText(
-                      text: TextSpan(
-                        style: TextStyle(color: textSlate500, fontSize: 14),
-                        children: [
-                          TextSpan(text: "Chủ đạo: "),
-                          TextSpan(
-                            text: analytics.dominantEmotion,
-                            style: TextStyle(
-                              color: textSlate900,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+            Text("Phân bổ cảm xúc", style: TextStyle(color: textSlate900, fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
-            _buildProgressBar(label: "Vui", percent: dist['Vui'] ?? 0.0, color: successGreen, isDark: isDark),
+            _buildProgressBar(label: "Vui", percent: dist['Vui'] ?? 0.0, color: successGreen),
             const SizedBox(height: 12),
-            _buildProgressBar(label: "Buồn", percent: dist['Buồn'] ?? 0.0, color: Colors.grey, isDark: isDark),
+            _buildProgressBar(label: "Buồn", percent: dist['Buồn'] ?? 0.0, color: Colors.grey),
             const SizedBox(height: 12),
-            _buildProgressBar(label: "Lo âu", percent: dist['Lo âu'] ?? 0.0, color: warningOrange, isDark: isDark),
+            _buildProgressBar(label: "Lo âu", percent: dist['Lo âu'] ?? 0.0, color: warningOrange),
             const SizedBox(height: 12),
-            _buildProgressBar(label: "Yên", percent: dist['Bình yên'] ?? 0.0, color: _primaryColor, isDark: isDark),
+            _buildProgressBar(label: "Yên", percent: dist['Bình yên'] ?? 0.0, color: _primaryColor),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildProgressBar({
-    required String label,
-    required double percent,
-    required Color color,
-    required bool isDark,
-  }) {
+  Widget _buildProgressBar({required String label, required double percent, required Color color}) {
     return Row(
       children: [
-        SizedBox(
-          width: 50, // w-12 approx
-          child: Text(
-            label,
-            style: TextStyle(
-              color: _textMuted,
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
+        SizedBox(width: 50, child: Text(label, style: TextStyle(color: _textMuted, fontSize: 13, fontWeight: FontWeight.bold))),
         Expanded(
           child: Container(
             height: 12,
-            decoration: BoxDecoration(
-              color: isDark ? Colors.white10 : Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(999),
-            ),
+            decoration: BoxDecoration(color: isDark ? Colors.white10 : Colors.grey.shade100, borderRadius: BorderRadius.circular(999)),
             child: FractionallySizedBox(
               alignment: Alignment.centerLeft,
               widthFactor: percent,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
+              child: Container(decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(999))),
             ),
           ),
         ),
@@ -551,42 +386,11 @@ class _DashboardScreenState extends State<DashboardScreen>
             children: [
               Icon(Icons.auto_awesome, color: primary, size: 20),
               const SizedBox(width: 8),
-              Text(
-                "Người bạn AI tư vấn",
-                style: TextStyle(
-                  color: textSlate900,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              Text("Người bạn AI tư vấn", style: TextStyle(color: textSlate900, fontSize: 18, fontWeight: FontWeight.bold)),
             ],
           ),
           const SizedBox(height: 16),
-          _buildAnalysisCard(
-            icon: Icons.chat_bubble_outline,
-            gradientColors: [Colors.indigo, Colors.purple],
-            title: "Lời khuyên từ bạn AI",
-            contentRich: TextSpan(
-              children: [
-                TextSpan(
-                  text: insights['summary'],
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                TextSpan(
-                  text: "\n\n${insights['advice']}",
-                  style: const TextStyle(fontWeight: FontWeight.w400),
-                ),
-                if (insights['proposal'] != null && insights['proposal']!.isNotEmpty)
-                  TextSpan(
-                    text: "\n\n💡 Gợi ý: ${insights['proposal']}",
-                    style: TextStyle(
-                      fontStyle: FontStyle.italic,
-                      color: primary.withOpacity(0.8),
-                      fontSize: 12,
-                    ),
-                  ),
-              ],
-            ),
+          BouncingButton(
             onTap: () {
               final mainState = context.findAncestorStateOfType<MainScreenState>();
               if (mainState != null) {
@@ -595,90 +399,24 @@ class _DashboardScreenState extends State<DashboardScreen>
                 Navigator.pushNamed(context, '/analysis');
               }
             },
-          ),
-        ],
-      ),
-    );
-  }
-
-
-  Widget _buildAnalysisCard({
-    required IconData icon,
-    required List<Color> gradientColors,
-    required String title,
-    required TextSpan contentRich,
-    VoidCallback? onTap,
-  }) {
-    return BouncingButton(
-      onTap: onTap ?? () {},
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: _surfaceColor,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: isDark ? [] : [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 2,
-              offset: const Offset(0, 1),
-            ),
-          ],
-          border: Border.all(color: _borderColor),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 48,
-              height: 48,
+            child: Container(
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: gradientColors,
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: _surfaceColor,
                 borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: gradientColors.last.withOpacity(0.4),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                border: Border.all(color: _borderColor),
               ),
-              child: Icon(icon, color: Colors.white, size: 24),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                     title,
-                    style: TextStyle(
-                      color: _textColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  RichText(
-                    text: TextSpan(
-                      style: TextStyle(
-                        color: _textMuted,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        height: 1.5,
-                      ),
-                      children: [contentRich],
-                    ),
-                  ),
+                  Text(insights['summary'] ?? '', style: TextStyle(color: _textColor, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Text(insights['advice'] ?? '', style: TextStyle(color: _textMuted, fontSize: 14)),
                 ],
               ),
             ),
-            Icon(Icons.chevron_right, color: _textMuted),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

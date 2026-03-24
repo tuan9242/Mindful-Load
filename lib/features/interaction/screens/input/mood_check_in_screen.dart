@@ -3,10 +3,11 @@ import 'package:mindful_load/core/constants/app_constants.dart';
 import 'package:mindful_load/features/interaction/screens/input/add_detail_screen.dart';
 
 class MoodCheckInScreen extends StatefulWidget {
-  final VoidCallback? onClose;
-  final VoidCallback? onCompleted;
+  final VoidCallback? onCloseAction;
+  final VoidCallback? onCompletedAction;
+  final bool isOnboarding;
   
-  const MoodCheckInScreen({super.key, this.onClose, this.onCompleted});
+  const MoodCheckInScreen({super.key, this.onCloseAction, this.onCompletedAction, this.isOnboarding = false});
 
   @override
   State<MoodCheckInScreen> createState() => _MoodCheckInScreenState();
@@ -32,10 +33,12 @@ class _MoodCheckInScreenState extends State<MoodCheckInScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final primaryColor = theme.primaryColor;
     final textColor = theme.textTheme.bodyLarge?.color ?? Colors.black;
     final secondaryTextColor = theme.textTheme.bodySmall?.color ?? Colors.grey;
+
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final bool isFromOnboarding = widget.isOnboarding || (args != null && args['isOnboarding'] == true);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -48,8 +51,14 @@ class _MoodCheckInScreenState extends State<MoodCheckInScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Icon(Icons.self_improvement,
-                      color: primaryColor, size: 24),
+                  if (isFromOnboarding)
+                    IconButton(
+                      icon: Icon(Icons.arrow_back, color: textColor),
+                      onPressed: () => Navigator.pop(context),
+                    )
+                  else
+                    Icon(Icons.self_improvement, color: primaryColor, size: 24),
+                  
                   Column(
                     children: [
                       Text(
@@ -69,10 +78,14 @@ class _MoodCheckInScreenState extends State<MoodCheckInScreen> {
                       ),
                     ],
                   ),
-                  IconButton(
-                    icon: Icon(Icons.close, color: textColor.withOpacity(0.5)),
-                    onPressed: widget.onClose,
-                  ),
+                  
+                  if (!isFromOnboarding)
+                    IconButton(
+                      icon: Icon(Icons.close, color: textColor.withValues(alpha: 0.5)),
+                      onPressed: widget.onCloseAction,
+                    )
+                  else
+                    const SizedBox(width: 48), // Spacer for centering
                 ],
               ),
             ),
@@ -97,7 +110,7 @@ class _MoodCheckInScreenState extends State<MoodCheckInScreen> {
                     'Hãy lắng nghe cơ thể và tâm trí bạn ngay lúc này.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: textColor.withOpacity(0.7),
+                      color: textColor.withValues(alpha: 0.7),
                       fontSize: 14,
                       height: 1.5,
                     ),
@@ -132,7 +145,7 @@ class _MoodCheckInScreenState extends State<MoodCheckInScreen> {
                               },
                             ),
                           );
-                        }).toList(),
+                        }),
                         SizedBox(
                           width: (MediaQuery.of(context).size.width - 40 - 12) / 2,
                           child: _MoodCard(
@@ -166,8 +179,9 @@ class _MoodCheckInScreenState extends State<MoodCheckInScreen> {
                             MaterialPageRoute(
                               builder: (_) => AddDetailScreen(
                                 selectedMood: _selectedMood!,
-                                onClose: widget.onClose,
-                                onCompleted: widget.onCompleted,
+                                onCloseAction: widget.onCloseAction,
+                                onCompletedAction: widget.onCompletedAction,
+                                isOnboarding: isFromOnboarding,
                               ),
                             ),
                           );
@@ -176,13 +190,13 @@ class _MoodCheckInScreenState extends State<MoodCheckInScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryColor,
                     disabledBackgroundColor:
-                        primaryColor.withOpacity(0.4),
+                        primaryColor.withValues(alpha: 0.4),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
                     elevation: 8,
-                    shadowColor: primaryColor.withOpacity(0.4),
+                    shadowColor: primaryColor.withValues(alpha: 0.4),
                   ),
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -234,17 +248,17 @@ class _MoodCard extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
           color: isSelected
-              ? color.withOpacity(0.15)
+              ? color.withValues(alpha: 0.15)
               : theme.cardColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? color.withOpacity(0.6) : theme.dividerColor,
+            color: isSelected ? color.withValues(alpha: 0.6) : theme.dividerColor,
             width: isSelected ? 1.5 : 1,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: color.withOpacity(0.2),
+                    color: color.withValues(alpha: 0.2),
                     blurRadius: 12,
                     spreadRadius: 1,
                   )

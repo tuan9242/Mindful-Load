@@ -141,7 +141,7 @@ class _JournalCalendarScreenState extends State<JournalCalendarScreen> {
         border: Border.all(color: theme.dividerColor),
         boxShadow: isDark ? [] : [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -190,7 +190,7 @@ class _JournalCalendarScreenState extends State<JournalCalendarScreen> {
     if (entries == null || entries.isEmpty) {
       return Container(
         decoration: BoxDecoration(
-          color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Center(
@@ -224,8 +224,8 @@ class _JournalCalendarScreenState extends State<JournalCalendarScreen> {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
-          color: primaryColor.withOpacity(0.2), 
-          border: Border.all(color: primaryColor.withOpacity(0.5)),
+          color: primaryColor.withValues(alpha: 0.2), 
+          border: Border.all(color: primaryColor.withValues(alpha: 0.5)),
         ),
         child: Stack(
           children: [

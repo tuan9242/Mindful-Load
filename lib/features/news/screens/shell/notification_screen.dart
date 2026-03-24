@@ -109,7 +109,7 @@ class NotificationScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.notifications_none_rounded,
-                            size: 80, color: textMuted.withOpacity(0.5)),
+                            size: 80, color: textMuted.withValues(alpha: 0.5)),
                         const SizedBox(height: 16),
                         Text(
                           'Bạn chưa có thông báo nào mới',
@@ -146,16 +146,16 @@ class NotificationScreen extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: isRead
                               ? surfaceColor
-                              : primaryColor.withOpacity(0.1),
+                              : primaryColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
                             color: isRead
                                 ? theme.dividerColor
-                                : primaryColor.withOpacity(0.3),
+                                : primaryColor.withValues(alpha: 0.3),
                           ),
                           boxShadow: isDark ? [] : [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.03),
+                              color: Colors.black.withValues(alpha: 0.03),
                               blurRadius: 10,
                               offset: const Offset(0, 4),
                             ),
@@ -169,7 +169,7 @@ class NotificationScreen extends StatelessWidget {
                               decoration: BoxDecoration(
                                 color: isRead
                                     ? (isDark ? Colors.white10 : Colors.grey.shade100)
-                                    : primaryColor.withOpacity(0.1),
+                                    : primaryColor.withValues(alpha: 0.1),
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(

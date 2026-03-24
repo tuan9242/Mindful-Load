@@ -30,18 +30,25 @@ class _ReminderScreenState extends State<ReminderScreen> {
 
   Future<void> _loadSettings() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    if (user == null) {
+      return;
+    }
     
     try {
       final doc = await FirebaseFirestore.instance.collection('settings').doc(user.uid).get();
-      if (doc.exists) {
-        final settings = UserSettingsModel.fromMap(doc.data()!);
+      if (doc.exists && mounted) {
+        final data = doc.data()!;
+        final settings = UserSettingsModel.fromMap(data);
         setState(() {
           _isNotificationEnabled = settings.isNotificationEnabled;
           if (settings.reminderTimes.isNotEmpty) {
-             if (settings.reminderTimes.isNotEmpty) _timeMorning = _parseTime(settings.reminderTimes[0]);
-             if (settings.reminderTimes.length > 1) _timeAfternoon = _parseTime(settings.reminderTimes[1]);
-             if (settings.reminderTimes.length > 2) _timeEvening = _parseTime(settings.reminderTimes[2]);
+             _timeMorning = _parseTime(settings.reminderTimes[0]);
+             if (settings.reminderTimes.length > 1) {
+               _timeAfternoon = _parseTime(settings.reminderTimes[1]);
+             }
+             if (settings.reminderTimes.length > 2) {
+               _timeEvening = _parseTime(settings.reminderTimes[2]);
+             }
              _selectedFrequency = '${settings.reminderTimes.length} lần/ngày';
           }
         });
@@ -69,7 +76,9 @@ class _ReminderScreenState extends State<ReminderScreen> {
   Future<void> _saveSettings() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      NotificationHelper.showTopNotification(context, 'Lưu ý', 'Vui lòng đăng nhập', true);
+      if (mounted) {
+        NotificationHelper.showTopNotification(context, 'Lưu ý', 'Vui lòng đăng nhập', true);
+      }
       return;
     }
 
@@ -103,9 +112,13 @@ class _ReminderScreenState extends State<ReminderScreen> {
          Navigator.pop(context);
       }
     } catch (e) {
-      if (mounted) NotificationHelper.showTopNotification(context, 'Lỗi', 'Lỗi lưu cấu hình: $e', true);
+      if (mounted) {
+        NotificationHelper.showTopNotification(context, 'Lỗi', 'Lỗi lưu cấu hình: $e', true);
+      }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -132,7 +145,6 @@ class _ReminderScreenState extends State<ReminderScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final primaryColor = theme.primaryColor;
     
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -160,6 +172,8 @@ class _ReminderScreenState extends State<ReminderScreen> {
                    const SizedBox(height: 24),
                 ],
                 _buildSoundSection(theme),
+                const SizedBox(height: 24),
+                _buildTestNotificationSection(theme),
               ],
             ),
           ),
@@ -187,7 +201,7 @@ class _ReminderScreenState extends State<ReminderScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.blueAccent.withOpacity(0.2),
+              color: Colors.blueAccent.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.notifications_active, color: Colors.blueAccent),
@@ -205,7 +219,7 @@ class _ReminderScreenState extends State<ReminderScreen> {
           Switch(
             value: _isNotificationEnabled,
             onChanged: (val) => setState(() => _isNotificationEnabled = val),
-            activeColor: Colors.blueAccent,
+            activeThumbColor: Colors.blueAccent,
           ),
         ],
       ),
@@ -213,13 +227,12 @@ class _ReminderScreenState extends State<ReminderScreen> {
   }
 
   Widget _buildSuggestionCard(ThemeData theme) {
-    final isDark = theme.brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.blue.withOpacity(0.1),
+        color: Colors.blue.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.blue.withOpacity(0.3)),
+        border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -234,7 +247,7 @@ class _ReminderScreenState extends State<ReminderScreen> {
                 const SizedBox(height: 4),
                 RichText(
                   text: TextSpan(
-                    style: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7), fontSize: 13, height: 1.5),
+                    style: TextStyle(color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7), fontSize: 13, height: 1.5),
                     children: [
                       const TextSpan(text: "Dựa trên nhật ký của bạn, căng thẳng thường tăng cao vào buổi chiều. Chúng mình đề xuất nhắc nhở vào lúc "),
                       TextSpan(text: "14:00", style: TextStyle(fontWeight: FontWeight.bold, color: theme.textTheme.bodyMedium?.color)),
@@ -265,10 +278,12 @@ class _ReminderScreenState extends State<ReminderScreen> {
               label: Text(freq),
               selected: isSelected,
               onSelected: (selected) {
-                if (selected) setState(() => _selectedFrequency = freq);
+                if (selected) {
+                  setState(() => _selectedFrequency = freq);
+                }
               },
               backgroundColor: theme.cardColor,
-              selectedColor: Colors.blueAccent.withOpacity(0.3),
+              selectedColor: Colors.blueAccent.withValues(alpha: 0.3),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             );
           }).toList(),
@@ -334,19 +349,50 @@ class _ReminderScreenState extends State<ReminderScreen> {
       children: [
         const Text("Âm báo", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
-        Column(
-          children: sounds.map((s) {
-            final isSelected = _selectedSound == s['label'];
-            return RadioListTile<String>(
+        ...sounds.map((s) {
+          final isSelected = _selectedSound == s['label'];
+          return ListTile(
+            title: Text(s['label'] as String),
+            leading: Icon(s['icon'] as IconData, color: isSelected ? Colors.blueAccent : Colors.grey),
+            trailing: Radio<String>(
               value: s['label'] as String,
               groupValue: _selectedSound,
-              onChanged: (val) => setState(() => _selectedSound = val!),
-              title: Text(s['label'] as String),
-              secondary: Icon(s['icon'] as IconData, color: isSelected ? Colors.blueAccent : Colors.grey),
               activeColor: Colors.blueAccent,
-              contentPadding: EdgeInsets.zero,
+              onChanged: (val) {
+                if (val != null) setState(() => _selectedSound = val);
+              },
+            ),
+            contentPadding: EdgeInsets.zero,
+            onTap: () {
+              setState(() => _selectedSound = s['label'] as String);
+            },
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildTestNotificationSection(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Kiểm tra hệ thống", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: () async {
+            await NotificationHelper.showLocalNotification(
+              title: "Tâm An nhắc bạn",
+              body: "Đã đến lúc kiểm tra cảm xúc của bạn rồi đấy!",
             );
-          }).toList(),
+          },
+          icon: const Icon(Icons.send, size: 18),
+          label: const Text("Gửi thông báo thử nghiệm"),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Colors.blueAccent,
+            side: const BorderSide(color: Colors.blueAccent),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            minimumSize: const Size(double.infinity, 45),
+          ),
         ),
       ],
     );
@@ -356,7 +402,7 @@ class _ReminderScreenState extends State<ReminderScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor.withOpacity(0.9),
+        color: theme.scaffoldBackgroundColor.withValues(alpha: 0.9),
       ),
       child: ElevatedButton.icon(
         onPressed: _isLoading ? null : _saveSettings,

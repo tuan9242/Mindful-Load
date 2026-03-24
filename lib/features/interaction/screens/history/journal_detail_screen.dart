@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:mindful_load/core/services/ai_insight_service.dart';
 
 class JournalDetailScreen extends StatelessWidget {
   final Map<String, dynamic>? entryData;
@@ -46,7 +47,7 @@ class JournalDetailScreen extends StatelessWidget {
                         border: Border.all(color: borderColor),
                         boxShadow: isDark ? [] : [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
+                            color: Colors.black.withValues(alpha: 0.05),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -107,7 +108,7 @@ class JournalDetailScreen extends StatelessWidget {
                 Text(
                   DateFormat('dd/MM/yyyy HH:mm').format(timestamp),
                   style: TextStyle(
-                    color: textColor.withOpacity(0.5),
+                    color: textColor.withValues(alpha: 0.5),
                     fontSize: 12,
                   ),
                 ),
@@ -174,7 +175,7 @@ class JournalDetailScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: primaryColor.withOpacity(0.1),
+              color: primaryColor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(_getMoodIcon(mood), color: primaryColor, size: 48),
@@ -242,7 +243,7 @@ class JournalDetailScreen extends StatelessWidget {
                   (entryData?['companions'] as List?)?.isEmpty == true)
                 Padding(
                   padding: const EdgeInsets.only(top: 8.0),
-                  child: Text('Không có thông tin chi tiết', style: TextStyle(color: textColor.withOpacity(0.4), fontSize: 14)),
+                  child: Text('Không có thông tin chi tiết', style: TextStyle(color: textColor.withValues(alpha: 0.4), fontSize: 14)),
                 ),
             ],
           ),
@@ -255,8 +256,8 @@ class JournalDetailScreen extends StatelessWidget {
     return Chip(
       avatar: Icon(icon, color: color, size: 14),
       label: Text(label, style: TextStyle(color: textColor, fontSize: 12)),
-      backgroundColor: color.withOpacity(0.1),
-      side: BorderSide(color: color.withOpacity(0.2)),
+      backgroundColor: color.withValues(alpha: 0.1),
+      side: BorderSide(color: color.withValues(alpha: 0.2)),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     );
   }
@@ -285,7 +286,7 @@ class JournalDetailScreen extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             entryData?['note'] ?? 'Không có ghi chú nào được lưu lại.',
-            style: TextStyle(color: textColor.withOpacity(0.8), fontSize: 16, height: 1.5),
+            style: TextStyle(color: textColor.withValues(alpha: 0.8), fontSize: 16, height: 1.5),
           ),
         ],
       ),
@@ -293,21 +294,37 @@ class JournalDetailScreen extends StatelessWidget {
   }
 
   Widget _buildInsightSection(bool isDark, Color primaryColor, Color textColor, Color secondaryTextColor) {
+    final insightService = AiInsightService([entryData ?? {}]);
+    final insight = insightService.generateInsights();
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: primaryColor.withOpacity(0.1),
+        color: primaryColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: primaryColor.withOpacity(0.2)),
+        border: Border.all(color: primaryColor.withValues(alpha: 0.2)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(Icons.lightbulb, color: primaryColor, size: 24),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              'Gợi ý: Hãy dành 5 phút thiền để cân bằng lại cảm xúc của bạn.',
-              style: TextStyle(color: textColor, fontSize: 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  insight['summary'] ?? '',
+                  style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+                if (insight['advice'] != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    insight['advice']!,
+                    style: TextStyle(color: textColor.withValues(alpha: 0.8), fontSize: 13),
+                  ),
+                ],
+              ],
             ),
           ),
         ],

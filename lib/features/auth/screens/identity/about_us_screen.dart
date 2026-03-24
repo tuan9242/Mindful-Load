@@ -39,9 +39,9 @@ class AboutUsScreen extends StatelessWidget {
                 width: 100,
                 height: 100,
                 decoration: BoxDecoration(
-                  color: theme.primaryColor.withOpacity(0.1),
+                  color: theme.primaryColor.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
-                  border: Border.all(color: theme.primaryColor.withOpacity(0.3), width: 2),
+                  border: Border.all(color: theme.primaryColor.withValues(alpha: 0.3), width: 2),
                 ),
                 child: Icon(Icons.groups_rounded, color: theme.primaryColor, size: 50),
               ),
@@ -58,7 +58,7 @@ class AboutUsScreen extends StatelessWidget {
               Text(
                 "Dự án Mindful Load",
                 style: TextStyle(
-                  color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                  color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
                   fontSize: 14,
                 ),
               ),
@@ -117,7 +117,7 @@ class AboutUsScreen extends StatelessWidget {
         border: Border.all(color: theme.dividerColor),
         boxShadow: isDark ? [] : [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -149,7 +149,7 @@ class AboutUsScreen extends StatelessWidget {
                   width: 6,
                   height: 6,
                   decoration: BoxDecoration(
-                    color: theme.primaryColor.withOpacity(0.5),
+                    color: theme.primaryColor.withValues(alpha: 0.5),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -157,13 +157,13 @@ class AboutUsScreen extends StatelessWidget {
                 Text(
                   item,
                   style: TextStyle(
-                    color: theme.textTheme.bodyLarge?.color?.withOpacity(0.8),
+                    color: theme.textTheme.bodyLarge?.color?.withValues(alpha: 0.8),
                     fontSize: 15,
                   ),
                 ),
               ],
             ),
-          )).toList(),
+          )),
         ],
       ),
     );

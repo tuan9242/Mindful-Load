@@ -50,7 +50,7 @@ class MainScreenState extends State<MainScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final bgColor = theme.scaffoldBackgroundColor;
-    final navBarColor = theme.cardColor.withOpacity(0.95);
+    final navBarColor = theme.cardColor.withValues(alpha: 0.95);
     final iconInactiveColor = isDark ? Colors.grey.shade600 : Colors.grey.shade400;
     final primaryColor = theme.primaryColor;
 
@@ -77,12 +77,12 @@ class MainScreenState extends State<MainScreen> {
                 end: Alignment.bottomRight,
                 colors: [
                   primaryColor,
-                  primaryColor.withOpacity(0.8),
+                  primaryColor.withValues(alpha: 0.8),
                 ],
               ),
               boxShadow: [
                 BoxShadow(
-                  color: primaryColor.withOpacity(0.4),
+                  color: primaryColor.withValues(alpha: 0.4),
                   blurRadius: 15,
                   spreadRadius: 2,
                   offset: const Offset(0, 4),
@@ -147,8 +147,8 @@ class MainScreenState extends State<MainScreen> {
       onGenerateRoute: (settings) {
         return MaterialPageRoute(
           builder: (context) => MoodCheckInScreen(
-            onClose: () => setState(() => _isCheckingIn = false),
-            onCompleted: _finishCheckIn,
+            onCloseAction: () => setState(() => _isCheckingIn = false),
+            onCompletedAction: _finishCheckIn,
           ),
         );
       },

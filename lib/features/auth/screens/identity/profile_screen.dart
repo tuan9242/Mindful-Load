@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import 'package:mindful_load/core/state/app_state.dart';
+import 'dart:io';
 import 'package:mindful_load/features/news/screens/alerts/reminder_screen.dart';
 import 'package:mindful_load/features/interaction/screens/config/custom_tag_screen.dart';
 import 'package:mindful_load/utils/journal_analytics.dart';
@@ -79,7 +83,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             title: 'Quản lý Nhãn',
                             textColor: textColor,
                             borderColor: borderColor,
-                            iconBgColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
+                            iconBgColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
                             showBorder: true,
                             onTap: () => Navigator.push(
                               context,
@@ -93,7 +97,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             trailingText: isDark ? 'Tối' : 'Sáng',
                             textColor: textColor,
                             borderColor: borderColor,
-                            iconBgColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
+                            iconBgColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
                             showBorder: false,
                             onTap: () => Navigator.push(
                               context,
@@ -116,7 +120,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             title: 'Xuất Báo cáo',
                             textColor: textColor,
                             borderColor: borderColor,
-                            iconBgColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
+                            iconBgColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
                             showBorder: true,
                             onTap: () => Navigator.push(
                               context,
@@ -129,7 +133,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             title: 'Sao lưu & Khôi phục',
                             textColor: textColor,
                             borderColor: borderColor,
-                            iconBgColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
+                            iconBgColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
                             showBorder: false,
                             onTap: () => Navigator.push(
                               context,
@@ -152,7 +156,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             title: 'Cài đặt thông báo',
                             textColor: textColor,
                             borderColor: borderColor,
-                            iconBgColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
+                            iconBgColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
                             showBorder: true,
                             onTap: () => Navigator.push(
                               context,
@@ -165,7 +169,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             title: 'Về chúng tôi',
                             textColor: textColor,
                             borderColor: borderColor,
-                            iconBgColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
+                            iconBgColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
                             showBorder: true,
                             onTap: () => Navigator.push(
                               context,
@@ -178,7 +182,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             title: 'Chính sách bảo mật',
                             textColor: textColor,
                             borderColor: borderColor,
-                            iconBgColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
+                            iconBgColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
                             showBorder: false,
                             onTap: () => Navigator.push(
                               context,
@@ -199,8 +203,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           }
                         },
                         style: OutlinedButton.styleFrom(
-                          backgroundColor: Colors.red.withOpacity(0.1),
-                          side: BorderSide(color: Colors.red.withOpacity(0.2)),
+                          backgroundColor: Colors.red.withValues(alpha: 0.1),
+                          side: BorderSide(color: Colors.red.withValues(alpha: 0.2)),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
@@ -321,10 +325,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
             height: 60,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: primaryColor.withOpacity(0.1),
-              border: Border.all(color: primaryColor.withOpacity(0.3), width: 2),
+              color: primaryColor.withValues(alpha: 0.1),
+              border: Border.all(color: primaryColor.withValues(alpha: 0.3), width: 2),
             ),
-            child: Icon(Icons.account_circle, color: textColor, size: 40),
+            child: CircleAvatar(
+              backgroundColor: Colors.transparent,
+              backgroundImage: context.watch<AppState>().localPhotoUrl != null 
+                  ? (kIsWeb ? NetworkImage(context.watch<AppState>().localPhotoUrl!) : FileImage(File(context.watch<AppState>().localPhotoUrl!)) as ImageProvider)
+                  : (_user?.photoURL != null ? NetworkImage(_user!.photoURL!) : null),
+              child: (_user?.photoURL == null && context.watch<AppState>().localPhotoUrl == null) 
+                  ? Icon(Icons.account_circle, color: textColor, size: 40)
+                  : null,
+            ),
           ),
           const SizedBox(width: 16),
           
@@ -346,7 +358,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Text(
                   _user?.email ?? '',
                   style: TextStyle(
-                    color: textColor.withOpacity(0.5),
+                    color: textColor.withValues(alpha: 0.5),
                     fontSize: 12,
                   ),
                   maxLines: 1,
@@ -372,7 +384,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   height: 4,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: isDark ? Colors.white.withOpacity(0.1) : Colors.grey.shade200,
+                    color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade200,
                     borderRadius: BorderRadius.circular(2),
                   ),
                   child: FractionallySizedBox(
@@ -384,7 +396,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         borderRadius: BorderRadius.circular(2),
                         boxShadow: [
                           BoxShadow(
-                            color: primaryColor.withOpacity(0.6),
+                            color: primaryColor.withValues(alpha: 0.6),
                             blurRadius: 4,
                           ),
                         ],
@@ -396,18 +408,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Cấp độ ${analytics.currentLevel}',
-                      style: TextStyle(
-                        color: textColor.withOpacity(0.4),
-                        fontSize: 10,
+                    Flexible(
+                      child: Text(
+                        'Cấp độ ${analytics.currentLevel}',
+                        style: TextStyle(
+                          color: textColor.withValues(alpha: 0.4),
+                          fontSize: 10,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    Text(
-                      '${NumberFormat('#,###').format(analytics.totalXP)} / ${NumberFormat('#,###').format(analytics.nextLevelXP)} XP',
-                      style: TextStyle(
-                        color: textColor.withOpacity(0.4),
-                        fontSize: 10,
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        '${NumberFormat('#,###').format(analytics.totalXP)} / ${NumberFormat('#,###').format(analytics.nextLevelXP)} XP',
+                        style: TextStyle(
+                          color: textColor.withValues(alpha: 0.4),
+                          fontSize: 10,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
                       ),
                     ),
                   ],
@@ -416,7 +438,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          Icon(Icons.chevron_right, color: textColor.withOpacity(0.3)),
+          Icon(Icons.chevron_right, color: textColor.withValues(alpha: 0.3)),
         ],
       ),
     );
@@ -483,7 +505,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             fontWeight: FontWeight.w500,
           ),
         ),
-        trailing: Icon(Icons.chevron_right, color: textColor.withOpacity(0.3)),
+        trailing: Icon(Icons.chevron_right, color: textColor.withValues(alpha: 0.3)),
         onTap: onTap ?? () {},
       ),
     );
@@ -529,12 +551,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Text(
               trailingText,
               style: TextStyle(
-                color: textColor.withOpacity(0.4),
+                color: textColor.withValues(alpha: 0.4),
                 fontSize: 13,
               ),
             ),
             const SizedBox(width: 4),
-            Icon(Icons.chevron_right, color: textColor.withOpacity(0.3)),
+            Icon(Icons.chevron_right, color: textColor.withValues(alpha: 0.3)),
           ],
         ),
         onTap: onTap ?? () {},

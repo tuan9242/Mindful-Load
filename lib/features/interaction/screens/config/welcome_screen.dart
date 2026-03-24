@@ -96,13 +96,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                 boxShadow: [
                                   BoxShadow(
                                     color: secondaryColor
-                                        .withOpacity(0.15 * _glowAnim.value),
+                                        .withValues(alpha: 0.15 * _glowAnim.value),
                                     blurRadius: 60,
                                     spreadRadius: 20,
                                   ),
                                   BoxShadow(
                                     color: primaryColor
-                                        .withOpacity(0.2 * _glowAnim.value),
+                                        .withValues(alpha: 0.2 * _glowAnim.value),
                                     blurRadius: 40,
                                     spreadRadius: 10,
                                   ),
@@ -118,8 +118,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                 gradient: RadialGradient(
                                   colors: [
                                     secondaryColor
-                                        .withOpacity(0.12 * _glowAnim.value),
-                                    primaryColor.withOpacity(0.08),
+                                        .withValues(alpha: 0.12 * _glowAnim.value),
+                                    primaryColor.withValues(alpha: 0.08),
                                     Colors.transparent,
                                   ],
                                 ),
@@ -135,13 +135,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                   colors: [
-                                    primaryColor.withOpacity(0.3),
-                                    secondaryColor.withOpacity(0.1),
+                                    primaryColor.withValues(alpha: 0.3),
+                                    secondaryColor.withValues(alpha: 0.1),
                                   ],
                                 ),
                                 border: Border.all(
                                   color:
-                                      secondaryColor.withOpacity(0.3),
+                                      secondaryColor.withValues(alpha: 0.3),
                                   width: 1,
                                 ),
                               ),
@@ -201,25 +201,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         height: 1.6,
                       ),
                     ),
-                    const SizedBox(height: 28),
-                    // Dot indicators
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(3, (index) {
-                        return AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          width: index == _currentPage ? 20 : 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: index == _currentPage
-                                ? primaryColor
-                                : theme.hintColor,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        );
-                      }),
-                    ),
                     const SizedBox(height: 32),
                     // CTA button
                     SizedBox(
@@ -227,7 +208,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       height: 52,
                       child: ElevatedButton(
                         onPressed: () {
-                          Navigator.pushReplacementNamed(context, '/main');
+                          Navigator.pushNamed(
+                            context,
+                            '/mood-check-in',
+                            arguments: {'isOnboarding': true},
+                          );
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: primaryColor,
@@ -236,7 +221,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                             borderRadius: BorderRadius.circular(14),
                           ),
                           elevation: 8,
-                          shadowColor: primaryColor.withOpacity(0.4),
+                          shadowColor: primaryColor.withValues(alpha: 0.4),
                         ),
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -285,7 +270,7 @@ class _HeadPainter extends CustomPainter {
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5
-      ..color = secondaryColor.withOpacity(0.7 * glowOpacity);
+      ..color = secondaryColor.withValues(alpha: 0.7 * glowOpacity);
 
     // Head outline
     final headPath = Path();
@@ -301,7 +286,7 @@ class _HeadPainter extends CustomPainter {
     final linePaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.8
-      ..color = primaryColor.withOpacity(0.6 * glowOpacity);
+      ..color = primaryColor.withValues(alpha: 0.6 * glowOpacity);
 
     // Draw random neural connections
     final random = math.Random(42);
@@ -323,7 +308,7 @@ class _HeadPainter extends CustomPainter {
     // Draw small dots at nodes
     final dotPaint = Paint()
       ..style = PaintingStyle.fill
-      ..color = secondaryColor.withOpacity(glowOpacity);
+      ..color = secondaryColor.withValues(alpha: glowOpacity);
 
     for (final pt in points) {
       canvas.drawCircle(pt, 2, dotPaint);
@@ -332,7 +317,7 @@ class _HeadPainter extends CustomPainter {
     // Eyes
     final eyePaint = Paint()
       ..style = PaintingStyle.fill
-      ..color = secondaryColor.withOpacity(0.9 * glowOpacity);
+      ..color = secondaryColor.withValues(alpha: 0.9 * glowOpacity);
     canvas.drawCircle(Offset(cx - 12, cy + 2), 3.5, eyePaint);
     canvas.drawCircle(Offset(cx + 12, cy + 2), 3.5, eyePaint);
 
@@ -340,7 +325,7 @@ class _HeadPainter extends CustomPainter {
     final neckPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5
-      ..color = secondaryColor.withOpacity(0.5 * glowOpacity);
+      ..color = secondaryColor.withValues(alpha: 0.5 * glowOpacity);
     canvas.drawLine(Offset(cx - 10, cy + 50), Offset(cx - 14, cy + 65), neckPaint);
     canvas.drawLine(Offset(cx + 10, cy + 50), Offset(cx + 14, cy + 65), neckPaint);
     canvas.drawLine(Offset(cx - 14, cy + 65), Offset(cx + 14, cy + 65), neckPaint);

@@ -48,7 +48,7 @@ class SecurityMethodsScreen extends StatelessWidget {
               Text(
                 "Tại Mindful Load, chúng tôi cam kết bảo mật tuyệt đối thông tin cá nhân và những ghi chép tâm trạng của bạn.",
                 style: TextStyle(
-                  color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                  color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
                   fontSize: 15,
                   height: 1.5,
                 ),
@@ -100,7 +100,7 @@ class SecurityMethodsScreen extends StatelessWidget {
                   "Đội ngũ Mindful Load luôn nỗ lực vì sự an tâm của bạn.",
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: theme.primaryColor.withOpacity(0.8),
+                    color: theme.primaryColor.withValues(alpha: 0.8),
                     fontSize: 14,
                     fontStyle: FontStyle.italic,
                   ),
@@ -118,7 +118,7 @@ class SecurityMethodsScreen extends StatelessWidget {
       width: 60,
       height: 60,
       decoration: BoxDecoration(
-        color: theme.primaryColor.withOpacity(0.1),
+        color: theme.primaryColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Icon(icon, color: theme.primaryColor, size: 30),
@@ -134,7 +134,7 @@ class SecurityMethodsScreen extends StatelessWidget {
         border: Border.all(color: theme.dividerColor),
         boxShadow: isDark ? [] : [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -161,7 +161,7 @@ class SecurityMethodsScreen extends StatelessWidget {
                 Text(
                   description,
                   style: TextStyle(
-                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                    color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
                     fontSize: 14,
                     height: 1.4,
                   ),

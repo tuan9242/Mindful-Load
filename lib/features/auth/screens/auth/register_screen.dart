@@ -104,7 +104,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final borderColor = theme.dividerColor;
     final textColor = theme.textTheme.bodyLarge?.color ?? Colors.black;
     final secondaryTextColor = theme.textTheme.bodySmall?.color ?? Colors.grey;
-    final inputBgColor = isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50;
+    final inputBgColor = isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -186,8 +186,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  const Color(0xFF135BEC).withOpacity(0.2),
-                  bgColor.withOpacity(0.9),
+                  const Color(0xFF135BEC).withValues(alpha: 0.2),
+                  bgColor.withValues(alpha: 0.9),
                 ],
               ),
             ),
@@ -201,11 +201,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                      width: 64,
                      decoration: BoxDecoration(
                        shape: BoxShape.circle,
-                       color: Colors.white.withOpacity(0.1),
-                       border: Border.all(color: Colors.white.withOpacity(0.2)),
+                       color: Colors.white.withValues(alpha: 0.1),
+                       border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                        boxShadow: [
                          BoxShadow(
-                           color: Colors.black.withOpacity(0.1),
+                           color: Colors.black.withValues(alpha: 0.1),
                            blurRadius: 10,
                            spreadRadius: 2,
                          ),
@@ -382,7 +382,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             backgroundColor: primaryColor,
             foregroundColor: Colors.white,
             elevation: 8,
-            shadowColor: primaryColor.withOpacity(0.3),
+            shadowColor: primaryColor.withValues(alpha: 0.3),
             minimumSize: const Size.fromHeight(56),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),

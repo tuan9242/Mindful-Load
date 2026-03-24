@@ -4,6 +4,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:mindful_load/utils/notification_helper.dart';
 import 'package:intl/intl.dart';
 import 'package:mindful_load/utils/journal_analytics.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 
 class ExportReportScreen extends StatefulWidget {
   const ExportReportScreen({super.key});
@@ -33,25 +38,23 @@ class _ExportReportScreenState extends State<ExportReportScreen> {
     
     final now = DateTime.now();
     if (index == 0) {
-      // Tháng này
       _startDate = DateTime(now.year, now.month, 1);
       _endDate = now;
     } else if (index == 1) {
-      // 7 ngày qua
       _startDate = now.subtract(const Duration(days: 7));
       _endDate = now;
     } else if (index == 2) {
-      // 30 ngày qua
       _startDate = now.subtract(const Duration(days: 30));
       _endDate = now;
-    } else {
-      // Custom date range (already set via picker)
     }
     
     _fetchData();
   }
 
   Future<void> _fetchData() async {
+    if (!mounted) {
+      return;
+    }
     setState(() {
       _isLoading = true;
     });
@@ -59,37 +62,40 @@ class _ExportReportScreenState extends State<ExportReportScreen> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        // Prepare bounds for filtering
         final startStamp = Timestamp.fromDate(DateTime(_startDate.year, _startDate.month, _startDate.day));
-        // end day must be true end of day to include all records
         final endDay = DateTime(_endDate.year, _endDate.month, _endDate.day, 23, 59, 59, 999);
         final endStamp = Timestamp.fromDate(endDay);
 
-        final query = FirebaseFirestore.instance
+        final snapshot = await FirebaseFirestore.instance
             .collection('journals')
-            .where('userId', isEqualTo: user.uid);
-        
-        final snapshot = await query.get();
+            .where('userId', isEqualTo: user.uid)
+            .get();
             
-        // Filter locally to avoid missing index errors
+        if (!mounted) return;
+        
         final docs = snapshot.docs.where((doc) {
           final data = doc.data();
           final ts = data['timestamp'] as Timestamp?;
-          if (ts == null) return false;
+          if (ts == null) {
+            return false;
+          }
           return ts.compareTo(startStamp) >= 0 && ts.compareTo(endStamp) <= 0;
         }).toList();
 
-        // Local sort
         docs.sort((a,b) {
           final aTime = (a.data())['timestamp'] as Timestamp?;
           final bTime = (b.data())['timestamp'] as Timestamp?;
-          if (aTime == null || bTime == null) return 0;
+          if (aTime == null || bTime == null) {
+            return 0;
+          }
           return aTime.compareTo(bTime);
         });
 
-        setState(() {
-          _analytics = JournalAnalytics(docs.map((d) => d.data() as Map<String, dynamic>).toList());
-        });
+        if (mounted) {
+          setState(() {
+            _analytics = JournalAnalytics(docs.map((d) => d.data()).toList());
+          });
+        }
       }
     } catch (e) {
       debugPrint("Error fetching report data: $e");
@@ -106,6 +112,9 @@ class _ExportReportScreenState extends State<ExportReportScreen> {
   }
 
   void _showTopNotification(BuildContext context, String title, String message, bool isError) {
+    if (!mounted) {
+      return;
+    }
     NotificationHelper.showTopNotification(context, title, message, isError);
   }
 
@@ -152,7 +161,7 @@ class _ExportReportScreenState extends State<ExportReportScreen> {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: color.withAlpha(25),
+              color: color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: color, size: 28),
@@ -166,24 +175,85 @@ class _ExportReportScreenState extends State<ExportReportScreen> {
 
   void _handleDownloadAndNotify(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      try {
-        await FirebaseFirestore.instance.collection('notifications').add({
-          'userId': user.uid,
-          'title': 'Đã tải báo cáo',
-          'message': 'Báo cáo Sức khỏe Tinh thần từ ${DateFormat('dd/MM').format(_startDate)} đến ${DateFormat('dd/MM').format(_endDate)} đã được lưu vào máy.',
-          'isRead': false,
-          'timestamp': FieldValue.serverTimestamp(),
-        });
+    if (user == null || _analytics == null) return;
 
-        if (mounted) {
-          _showTopNotification(context, 'Tải về thành công', 'Báo cáo PDF đã được lưu vào thiết mục Tải về.', false);
-        }
-      } catch (e) {
-        debugPrint("PDF Download error: $e");
-        if (mounted) {
-          _showTopNotification(context, 'Lỗi tải xuống', "Đã xảy ra lỗi khi tạo PDF. Vui lòng thử lại.", true);
-        }
+    setState(() => _isLoading = true);
+
+    try {
+      final pdf = pw.Document();
+      final font = await PdfGoogleFonts.robotoRegular();
+      final fontBold = await PdfGoogleFonts.robotoBold();
+      
+      final dateStr = '${DateFormat('dd/MM/yyyy').format(_startDate)} - ${DateFormat('dd/MM/yyyy').format(_endDate)}';
+      final moodValue = _analytics!.averageScore;
+      final stressIndex = _analytics!.stressIndex;
+      final sleepHours = _analytics!.averageSleepHours;
+
+      pdf.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          theme: pw.ThemeData.withFont(base: font, bold: fontBold),
+          build: (pw.Context context) {
+            return pw.Padding(
+              padding: const pw.EdgeInsets.all(32),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Header(level: 0, text: 'Báo cáo Sức khỏe Tinh thần - Tâm An'),
+                  pw.SizedBox(height: 20),
+                  pw.Text('Người dùng: ${user.displayName ?? "User"}'),
+                  pw.Text('Email: ${user.email ?? "N/A"}'),
+                  pw.Text('Giai đoạn: $dateStr'),
+                  pw.Divider(),
+                  pw.SizedBox(height: 20),
+                  pw.Text('TỔNG QUAN CHỈ SỐ:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 10),
+                  pw.Bullet(text: 'Điểm Tâm trạng Trung bình: ${moodValue.toStringAsFixed(1)}/100'),
+                  pw.Bullet(text: 'Chỉ số Căng thẳng: $stressIndex%'),
+                  pw.Bullet(text: 'Thời gian Ngủ trung bình: ${sleepHours.toStringAsFixed(1)} giờ'),
+                  pw.Bullet(text: 'Tổng số bản ghi nhật ký: ${_analytics!.totalJournals}'),
+                  pw.SizedBox(height: 30),
+                  pw.Text('Lời khuyên từ tâm lý gia AI:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 10),
+                  pw.Text(
+                    moodValue > 70 
+                    ? 'Tâm trạng của bạn rất tốt trong giai đoạn này. Hãy tiếp tục duy trì các thói quen tích cực và dành thời gian cho các hoạt động yêu thích.'
+                    : 'Bạn đang có dấu hiệu căng thẳng trong giai đoạn này. Hãy dành thời gian để nghỉ ngơi, tập trung vào hơi thở và liên hệ với chuyên gia nếu cần thiết.'
+                  ),
+                  pw.Spacer(),
+                  pw.Align(
+                    alignment: pw.Alignment.centerRight,
+                    child: pw.Text('Ngày trích xuất: ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now())}', style: const pw.TextStyle(fontSize: 10)),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      );
+
+      await Printing.sharePdf(bytes: await pdf.save(), filename: 'Bao_cao_Tam_An_${user.uid.substring(0, 5)}.pdf');
+
+      // Notify in Firestore
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'userId': user.uid,
+        'title': 'Da tai bao cao',
+        'message': 'Bao cao Suc khoe Tinh than ($dateStr) da duoc tao va luu thanh cong.',
+        'isRead': false,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      if (mounted) {
+        _showTopNotification(context, 'Thành công', 'Báo cáo PDF đã được tạo!', false);
+      }
+    } catch (e) {
+      debugPrint("PDF Export error: $e");
+      if (mounted) {
+        _showTopNotification(context, 'Lỗi', "Không thể tạo PDF: $e", true);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -205,9 +275,9 @@ class _ExportReportScreenState extends State<ExportReportScreen> {
               onPrimary: Colors.white,
               surface: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1F2937) : Colors.white,
               onSurface: Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black,
-              primaryContainer: const Color(0xFF135BEC).withAlpha(89),
+              primaryContainer: const Color(0xFF135BEC).withValues(alpha: 0.3),
               onPrimaryContainer: Colors.white,
-              secondaryContainer: const Color(0xFF135BEC).withAlpha(51),
+              secondaryContainer: const Color(0xFF135BEC).withValues(alpha: 0.2),
             ),
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(foregroundColor: const Color(0xFF135BEC)),
@@ -219,6 +289,9 @@ class _ExportReportScreenState extends State<ExportReportScreen> {
     );
 
     if (picked != null) {
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _startDate = picked.start;
         _endDate = picked.end;
@@ -241,7 +314,6 @@ class _ExportReportScreenState extends State<ExportReportScreen> {
 
     final dateStr = '${DateFormat('dd/MM').format(_startDate)} - ${DateFormat('dd/MM, yyyy').format(_endDate)}';
     
-    // Fallback data when no logs
     final moodValue = (_analytics?.averageScore ?? 0.0).toDouble();
     final statusVal = moodValue > 70 ? '🟢 Cao' : (moodValue > 40 ? '🟡 TB' : '🔴 Thấp');
     final logCount = _analytics?.totalJournals ?? 0;
@@ -271,123 +343,106 @@ class _ExportReportScreenState extends State<ExportReportScreen> {
           child: Container(color: borderColor, height: 1.0),
         ),
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        physics: const BouncingScrollPhysics(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Khoảng thời gian',
+              style: TextStyle(color: textMuted, fontSize: 14, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Container(
               padding: const EdgeInsets.all(16),
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              decoration: BoxDecoration(
+                color: surfaceColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: borderColor),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Date Range Section
-                  Text(
-                    'Khoảng thời gian',
-                    style: TextStyle(color: textMuted, fontSize: 14, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: surfaceColor,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: borderColor),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: primaryColor.withAlpha(25),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(Icons.calendar_month, color: primaryColor, size: 20),
-                            ),
-                            const SizedBox(width: 16),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Đã chọn', style: TextStyle(color: textMuted, fontSize: 12, fontWeight: FontWeight.w500)),
-                                Text(dateStr, style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold)),
-                              ],
-                            ),
-                          ],
-                        ),
-                        TextButton(
-                          onPressed: _pickDateRange,
-                          child: Text('Thay đổi', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  // Quick Ranges
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    child: Row(
-                      children: [
-                        _buildChip('Tháng này', 0, isDark, primaryColor),
-                        const SizedBox(width: 8),
-                        _buildChip('7 ngày qua', 1, isDark, primaryColor),
-                        const SizedBox(width: 8),
-                        _buildChip('30 ngày qua', 2, isDark, primaryColor),
-                      ],
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // PDF Preview
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Xem trước bản in (PDF)',
-                        style: TextStyle(color: textMuted, fontSize: 14, fontWeight: FontWeight.bold),
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: primaryColor.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.calendar_month, color: primaryColor, size: 20),
                       ),
-                      Text(
-                        '1 trang',
-                        style: TextStyle(color: textMuted.withAlpha(178), fontSize: 12, fontWeight: FontWeight.w500),
+                      const SizedBox(width: 16),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Đã chọn', style: TextStyle(color: textMuted, fontSize: 12, fontWeight: FontWeight.w500)),
+                          Text(dateStr, style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold)),
+                        ],
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  
-                  _buildReportContent(isDark, surfaceColor, primaryColor, textColor, textMuted, borderColor, dateStr, moodValue, statusVal, logCount),
+                  TextButton(
+                    onPressed: _pickDateRange,
+                    child: Text('Thay đổi', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+                  ),
                 ],
               ),
             ),
-          ),
-          
-          // Bottom Action
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: bgColor.withAlpha(230),
-              border: Border(top: BorderSide(color: borderColor)),
+            const SizedBox(height: 12),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: Row(
+                children: [
+                  _buildChip('Tháng này', 0, isDark, primaryColor),
+                  const SizedBox(width: 8),
+                  _buildChip('7 ngày qua', 1, isDark, primaryColor),
+                  const SizedBox(width: 8),
+                  _buildChip('30 ngày qua', 2, isDark, primaryColor),
+                ],
+              ),
             ),
-            child: Column(
+            
+            const SizedBox(height: 24),
+            
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                ElevatedButton.icon(
-                  onPressed: () => _handleDownloadAndNotify(context),
-                  icon: const Icon(Icons.download, color: Colors.white),
-                  label: const Text('Tải về báo cáo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
-                    minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    elevation: 4,
-                  ),
+                Text(
+                  'Xem trước bản in (PDF)',
+                  style: TextStyle(color: textMuted, fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  '1 trang',
+                  style: TextStyle(color: textMuted.withValues(alpha: 0.7), fontSize: 12, fontWeight: FontWeight.w500),
                 ),
               ],
             ),
+            const SizedBox(height: 12),
+            
+            _buildReportContent(isDark, surfaceColor, primaryColor, textColor, textMuted, borderColor, dateStr, moodValue, statusVal, logCount),
+          ],
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: ElevatedButton.icon(
+            onPressed: () => _handleDownloadAndNotify(context),
+            icon: const Icon(Icons.download, color: Colors.white),
+            label: const Text('Tải về báo cáo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryColor,
+              minimumSize: const Size(double.infinity, 50),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              elevation: 4,
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -473,7 +528,6 @@ class _ExportReportScreenState extends State<ExportReportScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -633,7 +687,7 @@ class _ExportReportScreenState extends State<ExportReportScreen> {
                     end: Alignment.bottomCenter,
                     colors: [
                       primaryColor,
-                      primaryColor.withAlpha(76),
+                      primaryColor.withValues(alpha: 0.3),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(2),
@@ -643,7 +697,7 @@ class _ExportReportScreenState extends State<ExportReportScreen> {
               Container(
                 width: 4,
                 height: 4,
-                decoration: BoxDecoration(color: primaryColor.withAlpha(51), shape: BoxShape.circle),
+                decoration: BoxDecoration(color: primaryColor.withValues(alpha: 0.2), shape: BoxShape.circle),
               ),
             ],
           );
@@ -653,11 +707,12 @@ class _ExportReportScreenState extends State<ExportReportScreen> {
   }
 
   Widget _buildRealDistribution() {
-    if (_analytics == null || _analytics!.totalJournals == 0) { return const SizedBox(); }
+    if (_analytics == null || _analytics!.totalJournals == 0) {
+       return const SizedBox(); 
+    }
     final dist = _analytics!.calculateDistribution();
-    // take top 3
-    final entries = dist.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-    final take3 = entries.take(3).toList();
+    final sortedEntries = dist.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final take3 = sortedEntries.take(3).toList();
 
     return Column(
       children: take3.map((e) {

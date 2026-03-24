@@ -41,7 +41,7 @@ class AuthWelcomeScreen extends StatelessWidget {
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            backgroundColor.withOpacity(0.4),
+                            backgroundColor.withValues(alpha: 0.4),
                             backgroundColor,
                           ],
                           stops: const [0.0, 0.7, 1.0],
@@ -97,14 +97,14 @@ class AuthWelcomeScreen extends StatelessWidget {
                                       height: 64,
                                       width: 64,
                                       decoration: BoxDecoration(
-                                        color: primaryColor.withOpacity(0.2),
+                                        color: primaryColor.withValues(alpha: 0.2),
                                         borderRadius: BorderRadius.circular(16),
                                         border: Border.all(
-                                          color: Colors.white.withOpacity(0.1),
+                                          color: Colors.white.withValues(alpha: 0.1),
                                         ),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: Colors.black.withOpacity(0.1),
+                                            color: Colors.black.withValues(alpha: 0.1),
                                             blurRadius: 10,
                                           ),
                                         ],
@@ -171,7 +171,7 @@ class AuthWelcomeScreen extends StatelessWidget {
                                       borderRadius: BorderRadius.circular(16),
                                     ),
                                     elevation: 8,
-                                    shadowColor: primaryColor.withOpacity(0.3),
+                                    shadowColor: primaryColor.withValues(alpha: 0.3),
                                   ),
                                   child: const Row(
                                     mainAxisAlignment: MainAxisAlignment.center,

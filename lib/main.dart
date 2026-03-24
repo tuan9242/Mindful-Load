@@ -2,7 +2,11 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:mindful_load/core/theme/app_theme.dart';
+import 'package:mindful_load/utils/notification_helper.dart';
+import 'package:mindful_load/core/config/firebase_options.dart';
+import 'package:mindful_load/core/state/app_state.dart';
 import 'package:mindful_load/features/auth/screens/auth/auth_welcome_screen.dart';
 import 'package:mindful_load/features/interaction/screens/config/welcome_screen.dart' as interaction_welcome;
 import 'package:mindful_load/features/interaction/screens/input/mood_check_in_screen.dart';
@@ -23,40 +27,38 @@ import 'package:mindful_load/features/interaction/screens/config/theme_settings_
 import 'package:mindful_load/features/auth/screens/identity/user_info_screen.dart';
 import 'package:mindful_load/features/auth/screens/auth/change_password_screen.dart';
 import 'package:mindful_load/features/news/screens/analytics/analysis_screen.dart';
-
-import 'package:flutter/foundation.dart';
-
-final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.dark);
+import 'package:mindful_load/features/auth/screens/auth/forgot_password_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
   try {
-    if (kIsWeb || defaultTargetPlatform == TargetPlatform.windows) {
-      // Lưu ý: Người dùng cần cung cấp Web App ID thực tế từ Firebase Console
-      // để có thể đăng nhập trên trình duyệt/windows.
-      await Firebase.initializeApp(
-        options: const FirebaseOptions(
-          apiKey: 'AIzaSyA8UECu38B-UC2XVGaD_0RROI_SxrB8-DE',
-          appId: '1:759026003067:android:c99ea62d67bed47a30c6de',
-          messagingSenderId: '759026003067',
-          projectId: 'btl-1771020719',
-          storageBucket: 'btl-1771020719.firebasestorage.app',
-        ),
-      );
-    } else {
-      // Android sẽ tự động sử dụng google-services.json
-      await Firebase.initializeApp();
-    }
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    await NotificationHelper.init();
   } catch (e) {
-    debugPrint("Firebase Init error: $e");
+    debugPrint("Firebase/Notification Init error: $e");
   }
+
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.light,
     ),
   );
-  runApp(const TamAnApp());
+
+  final appState = AppState();
+  await appState.loadFromPrefs();
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: appState),
+      ],
+      child: const TamAnApp(),
+    ),
+  );
 }
 
 class TamAnApp extends StatelessWidget {
@@ -64,11 +66,10 @@ class TamAnApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<ThemeMode>(
-      valueListenable: themeNotifier,
-      builder: (_, ThemeMode currentMode, __) {
+    return Consumer<AppState>(
+      builder: (context, appState, child) {
         return MaterialApp(
-          title: 'Tâm An',
+          title: 'Mindful Load',
           debugShowCheckedModeBanner: false,
           localizationsDelegates: const [
             GlobalMaterialLocalizations.delegate,
@@ -78,12 +79,11 @@ class TamAnApp extends StatelessWidget {
           supportedLocales: const [Locale('vi', 'VN')],
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
-          themeMode: currentMode,
+          themeMode: appState.themeMode,
           initialRoute: '/splash',
           routes: {
             '/splash': (context) => const SplashScreen(),
             '/main': (context) => const MainScreen(),
-            '/dev-menu': (context) => const DevMenuScreen(),
             '/': (context) => const AuthWelcomeScreen(),
             '/login': (context) => const LoginScreen(),
             '/register': (context) => const RegisterScreen(),
@@ -103,31 +103,10 @@ class TamAnApp extends StatelessWidget {
             '/theme-settings': (context) => const ThemeSettingsScreen(),
             '/user-info': (context) => const UserInfoScreen(),
             '/change-password': (context) => const ChangePasswordScreen(),
+            '/forgot-password': (context) => const ForgotPasswordScreen(),
           },
         );
       },
-    );
-  }
-}
-
-class DevMenuScreen extends StatelessWidget {
-  const DevMenuScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Test Menu')),
-      body: ListView(
-        children: [
-          ListTile(title: const Text('Configured Splash Screen'), onTap: () => Navigator.pushNamed(context, '/splash')),
-          ListTile(title: const Text('Welcome Screen'), onTap: () => Navigator.pushNamed(context, '/')),
-          ListTile(title: const Text('Login Screen'), onTap: () => Navigator.pushNamed(context, '/login')),
-          ListTile(title: const Text('Register Screen'), onTap: () => Navigator.pushNamed(context, '/register')),
-          ListTile(title: const Text('Journal List Screen'), onTap: () => Navigator.pushNamed(context, '/journal-list')),
-          ListTile(title: const Text('Journal Detail Screen'), onTap: () => Navigator.pushNamed(context, '/journal-detail')),
-          ListTile(title: const Text('Profile Screen'), onTap: () => Navigator.pushNamed(context, '/profile')),
-        ],
-      ),
     );
   }
 }

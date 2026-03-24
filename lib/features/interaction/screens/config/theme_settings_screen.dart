@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:mindful_load/main.dart';
+import 'package:provider/provider.dart';
+import 'package:mindful_load/core/state/app_state.dart';
 
 class ThemeSettingsScreen extends StatefulWidget {
   const ThemeSettingsScreen({super.key});
@@ -15,7 +16,12 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
   void initState() {
     super.initState();
     // Initialize based on current app theme
-    _selectedThemeIndex = themeNotifier.value == ThemeMode.dark ? 0 : 1;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final appState = Provider.of<AppState>(context, listen: false);
+      setState(() {
+        _selectedThemeIndex = appState.themeMode == ThemeMode.dark ? 0 : 1;
+      });
+    });
   }
 
   void _handleThemeSelection(int index) {
@@ -23,8 +29,9 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
       _selectedThemeIndex = index;
     });
     
-    // Update global theme notifier
-    themeNotifier.value = (index == 0) ? ThemeMode.dark : ThemeMode.light;
+    // Update global app state via Provider
+    final appState = Provider.of<AppState>(context, listen: false);
+    appState.setThemeMode((index == 0) ? ThemeMode.dark : ThemeMode.light);
 
     // Show top-down notification
     _showTopNotification(
@@ -90,7 +97,6 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
@@ -148,7 +154,7 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
             width: 2,
           ),
           boxShadow: isSelected ? [
-            BoxShadow(color: const Color(0xFF135BEC).withOpacity(0.2), blurRadius: 12, spreadRadius: 2)
+            BoxShadow(color: const Color(0xFF135BEC).withValues(alpha: 0.2), blurRadius: 12, spreadRadius: 2)
           ] : null,
         ),
         child: Column(
@@ -159,7 +165,7 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
               decoration: BoxDecoration(
                 color: previewColor,
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
               ),
               child: Icon(icon, color: isSelected ? const Color(0xFF135BEC) : Colors.grey, size: 28),
             ),

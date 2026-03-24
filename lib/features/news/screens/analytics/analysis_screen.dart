@@ -163,8 +163,8 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             Expanded(
               child: _buildStatCard(
                 theme,
-                "Giấc ngủ & Năng lượng",
-                "${analyticsData.averageSleepHours.toStringAsFixed(1)}h / ${analyticsData.averageEnergyLevel.toStringAsFixed(1)}",
+                "Giấc ngủ",
+                "${analyticsData.averageSleepHours.toStringAsFixed(1)}h",
                 "Chất lượng: ${analyticsData.averageSleepHours >= 7 ? 'Tốt' : 'Cần chú ý'}",
                 const Color(0xFF6366F1),
                 Icons.bedtime_outlined,
@@ -355,11 +355,13 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     final analyticsHelper = JournalAnalytics([]); // Used for getScore helper
     for (int i = 0; i < chartEntries.length; i++) {
         final entry = chartEntries[i];
-        
         final moodScore = analyticsHelper.getScore(entry['mood'] ?? 'Bình thường');
         moodSpots.add(FlSpot(i.toDouble(), moodScore));
-        
-        final sleep = (entry['sleepHours'] as num?)?.toDouble() ?? 0.0;
+    }
+
+    final dailySleepEntries = analytics.getDailySleepEntries();
+    for (int i = 0; i < dailySleepEntries.length; i++) {
+        final sleep = (dailySleepEntries[i]['sleepHours'] as num?)?.toDouble() ?? 0.0;
         sleepSpots.add(FlSpot(i.toDouble(), sleep)); 
     }
 
@@ -368,7 +370,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       children: [
         _buildMoodChart(theme, moodSpots, chartEntries),
         const SizedBox(height: 24),
-        _buildWellnessChart(theme, sleepSpots, chartEntries),
+        _buildWellnessChart(theme, sleepSpots, dailySleepEntries),
       ],
     );
   }
@@ -398,7 +400,15 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             ? const Center(child: Text("Chưa có dữ liệu"))
             : LineChart(
                 LineChartData(
-                  gridData: const FlGridData(show: false),
+                                    gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    getDrawingHorizontalLine: (value) => FlLine(
+                      color: theme.dividerColor.withAlpha(50),
+                      strokeWidth: 1,
+                    ),
+                  ),
+
                   titlesData: FlTitlesData(
                     rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                     topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -448,7 +458,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [theme.primaryColor.withAlpha(51), theme.primaryColor.withAlpha(0)],
+                          colors: [theme.primaryColor.withAlpha(80), theme.primaryColor.withAlpha(10)],
                         ),
                       ),
                     ),
@@ -507,7 +517,15 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             ? const Center(child: Text("Chưa có dữ liệu"))
             : LineChart(
                 LineChartData(
-                  gridData: const FlGridData(show: false),
+                                    gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    getDrawingHorizontalLine: (value) => FlLine(
+                      color: theme.dividerColor.withAlpha(50),
+                      strokeWidth: 1,
+                    ),
+                  ),
+
                   titlesData: FlTitlesData(
                     rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                     topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -572,17 +590,19 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       final ts = entries[index]['timestamp'] as Timestamp?;
       if (ts != null) {
         final date = ts.toDate();
-        // Intelligent label: only show date at start of day or start of chart
+        // Intelligent label: HH:mm if data spans < 24h, else dd/MM
         bool showTime = false;
-        if (index > 0) {
-          final prevTs = entries[index - 1]['timestamp'] as Timestamp?;
-          if (prevTs != null) {
-            final prevDate = prevTs.toDate();
-            if (date.day == prevDate.day && date.month == prevDate.month) {
-              showTime = true;
-            }
+        if (entries.isNotEmpty) {
+          final firstTs = entries.first['timestamp'] as Timestamp?;
+          final lastTs = entries.last['timestamp'] as Timestamp?;
+          if (firstTs != null && lastTs != null) {
+             final diff = lastTs.toDate().difference(firstTs.toDate()).inHours;
+             if (diff.abs() < 24) {
+               showTime = true;
+             }
           }
         }
+
         return Padding(
           padding: const EdgeInsets.only(top: 8.0),
           child: Text(
@@ -678,7 +698,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           Text(
             impact,
             style: TextStyle(
-              color: Colors.red.shade300,
+              color: impact.startsWith('+') ? Colors.green : Colors.red.shade300,
               fontWeight: FontWeight.bold,
             ),
           ),

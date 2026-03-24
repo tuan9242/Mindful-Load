@@ -23,6 +23,14 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   Color _strengthColor = Colors.grey;
   double _strengthProgress = 0.0;
 
+  @override
+  void dispose() {
+    _oldPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
   void _checkPasswordStrength(String value) {
     setState(() {
       if (value.isEmpty) {
@@ -86,12 +94,17 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           _showTopNotification('Lỗi xác thực', 'Mật khẩu cũ không chính xác hoặc lỗi hệ thống', true);
         }
       } finally {
-        if (mounted) setState(() => _isLoading = false);
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
       }
     }
   }
 
   void _showTopNotification(String title, String message, bool isError) {
+    if (!mounted) {
+      return;
+    }
     NotificationHelper.showTopNotification(context, title, message, isError);
   }
 
@@ -100,13 +113,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final bgColor = theme.scaffoldBackgroundColor;
-    final textColor = theme.textTheme.headlineLarge?.color ?? Colors.white;
     final primaryColor = theme.primaryColor;
 
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
-        title: const Text('Đổi mật khẩu', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Thay đổi mật khẩu', style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -129,15 +141,14 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             
             _buildPasswordField('Mật khẩu hiện tại', _oldPasswordController, _obscureOld, () {
               setState(() => _obscureOld = !_obscureOld);
-            }, isDark),
+            }),
             
             const SizedBox(height: 24),
             _buildPasswordField('Mật khẩu mới', _newPasswordController, _obscureNew, () {
               setState(() => _obscureNew = !_obscureNew);
-            }, isDark, onChanged: _checkPasswordStrength),
+            }, onChanged: _checkPasswordStrength),
             
             const SizedBox(height: 12),
-            // Strength Meter
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -161,7 +172,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             const SizedBox(height: 24),
             _buildPasswordField('Xác nhận mật khẩu mới', _confirmPasswordController, _obscureConfirm, () {
               setState(() => _obscureConfirm = !_obscureConfirm);
-            }, isDark),
+            }),
             
             const SizedBox(height: 48),
             ElevatedButton(
@@ -173,7 +184,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               ),
               child: _isLoading 
                   ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text('Cập nhật mật khẩu', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                  : const Text('Thay đổi mật khẩu', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
             ),
           ],
         ),
@@ -181,7 +192,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     );
   }
 
-  Widget _buildPasswordField(String label, TextEditingController controller, bool obscure, VoidCallback onToggle, bool isDark, {Function(String)? onChanged}) {
+  Widget _buildPasswordField(String label, TextEditingController controller, bool obscure, VoidCallback onToggle, {Function(String)? onChanged}) {
     final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:mindful_load/utils/notification_helper.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -24,11 +26,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _handleLogin() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      NotificationHelper.showTopNotification(context, 'Lưu ý', 'Vui lòng nhập Email và Mật khẩu!', true);
+      NotificationHelper.showTopNotification(
+        context,
+        'Lưu ý',
+        'Vui lòng nhập Email và Mật khẩu!',
+        true,
+      );
       return;
     }
     setState(() => _isLoading = true);
-    
+
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
@@ -42,17 +49,77 @@ class _LoginScreenState extends State<LoginScreen> {
         String msg = 'Đăng nhập thất bại';
         if (e.code == 'user-not-found' || e.code == 'invalid-email') {
           msg = 'Tài khoản không tồn tại.';
-        } else if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        } else if (e.code == 'wrong-password' ||
+            e.code == 'invalid-credential') {
           msg = 'Sai email hoặc mật khẩu.';
         } else {
           msg = e.message ?? msg;
         }
-        NotificationHelper.showTopNotification(context, 'Đăng nhập thất bại', msg, true);
+        NotificationHelper.showTopNotification(
+          context,
+          'Đăng nhập thất bại',
+          msg,
+          true,
+        );
       }
     } catch (e) {
       debugPrint('Login Error (Platform/Firebase): $e');
       if (mounted) {
-        NotificationHelper.showTopNotification(context, 'Lỗi hệ thống', 'Đã có lỗi xảy ra: $e', true);
+        NotificationHelper.showTopNotification(
+          context,
+          'Lỗi hệ thống',
+          'Đã có lỗi xảy ra: $e',
+          true,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _handleForgotPassword() {
+    Navigator.pushNamed(context, '/forgot-password');
+  }
+
+  Future<void> _handleGoogleLogin() async {
+    setState(() => _isLoading = true);
+    try {
+      const String? webClientId = null; // USER: Paste your Client ID here
+      
+      if (kIsWeb && webClientId == null) {
+        throw 'Vui lòng cấu hình Google Client ID cho Web trong file login_screen.dart (dòng ~90) để sử dụng tính năng này.';
+      }
+
+      final GoogleSignInAccount? googleUser = await GoogleSignIn(
+        clientId: webClientId,
+      ).signIn();
+      if (googleUser == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      await FirebaseAuth.instance.signInWithCredential(credential);
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
+      }
+    } catch (e) {
+      debugPrint('Google Login Error: $e');
+      if (mounted) {
+        NotificationHelper.showTopNotification(
+          context,
+          'Lỗi',
+          'Đăng nhập Google thất bại: $e',
+          true,
+        );
       }
     } finally {
       if (mounted) {
@@ -72,7 +139,9 @@ class _LoginScreenState extends State<LoginScreen> {
     final borderColor = theme.dividerColor;
     final textColor = theme.textTheme.bodyLarge?.color ?? Colors.black;
     final secondaryTextColor = theme.textTheme.bodySmall?.color ?? Colors.grey;
-    final inputBgColor = isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50;
+    final inputBgColor = isDark
+        ? Colors.white.withValues(alpha: 0.05)
+        : Colors.grey.shade50;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -84,12 +153,21 @@ class _LoginScreenState extends State<LoginScreen> {
 
             // Main Content Container
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 24.0,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Form Fields
-                  _buildForm(primaryColor, inputBgColor, borderColor, textColor, secondaryTextColor),
+                  _buildForm(
+                    primaryColor,
+                    inputBgColor,
+                    borderColor,
+                    textColor,
+                    secondaryTextColor,
+                  ),
                   const SizedBox(height: 32),
 
                   // Social Divider
@@ -132,7 +210,8 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
             image: DecorationImage(
               image: NetworkImage(
-                  'https://lh3.googleusercontent.com/aida-public/AB6AXuCwUmiaiE88PPdsTtrl7ClDmfXjkBwiHtH1iTBMMFeoYfWSJWgEKmsYr7Ec-743pz2xnitPI8vDYgfeMHXVkoUpQLnInwK2SBFw6qoy6bLuY1_ung1RY1uRKLlcSk-EuxZE079_M711pcHVHXyvn-3eswswbofsWF0ciri1a-u_a_LlvQ_qiwl4ybsRHA81WAqB7qJPsLMGQx_hqjWpgZuOGTramIhYM6dRo3jh3GLVArqHSQo13Wlv_PW8aiMJ_ZNvdAkj2ruRWw'),
+                'https://lh3.googleusercontent.com/aida-public/AB6AXuCwUmiaiE88PPdsTtrl7ClDmfXjkBwiHtH1iTBMMFeoYfWSJWgEKmsYr7Ec-743pz2xnitPI8vDYgfeMHXVkoUpQLnInwK2SBFw6qoy6bLuY1_ung1RY1uRKLlcSk-EuxZE079_M711pcHVHXyvn-3eswswbofsWF0ciri1a-u_a_LlvQ_qiwl4ybsRHA81WAqB7qJPsLMGQx_hqjWpgZuOGTramIhYM6dRo3jh3GLVArqHSQo13Wlv_PW8aiMJ_ZNvdAkj2ruRWw',
+              ),
               fit: BoxFit.cover,
             ),
           ),
@@ -146,8 +225,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  const Color(0xFF135BEC).withOpacity(0.2),
-                  bgColor.withOpacity(0.9),
+                  const Color(0xFF135BEC).withValues(alpha: 0.2),
+                  bgColor.withValues(alpha: 0.9),
                 ],
               ),
             ),
@@ -161,11 +240,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     width: 64,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.white.withOpacity(0.1),
-                      border: Border.all(color: Colors.white.withOpacity(0.2)),
+                      color: Colors.white.withValues(alpha: 0.1),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.2),
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withValues(alpha: 0.1),
                           blurRadius: 10,
                           spreadRadius: 2,
                         ),
@@ -226,7 +307,11 @@ class _LoginScreenState extends State<LoginScreen> {
       children: [
         Text(
           'Email',
-          style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w500),
+          style: TextStyle(
+            color: textColor,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
         ),
         const SizedBox(height: 6),
         TextField(
@@ -239,7 +324,10 @@ class _LoginScreenState extends State<LoginScreen> {
             prefixIcon: Icon(Icons.mail_outline, color: secondaryTextColor),
             filled: true,
             fillColor: inputBgColor,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: borderColor),
@@ -254,7 +342,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
         Text(
           'Mật khẩu',
-          style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w500),
+          style: TextStyle(
+            color: textColor,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
         ),
         const SizedBox(height: 6),
         TextField(
@@ -267,14 +359,20 @@ class _LoginScreenState extends State<LoginScreen> {
             prefixIcon: Icon(Icons.lock_outline, color: secondaryTextColor),
             suffixIcon: IconButton(
               icon: Icon(
-                _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                _obscurePassword
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
                 color: secondaryTextColor,
               ),
-              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+              onPressed: () =>
+                  setState(() => _obscurePassword = !_obscurePassword),
             ),
             filled: true,
             fillColor: inputBgColor,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: borderColor),
@@ -290,7 +388,7 @@ class _LoginScreenState extends State<LoginScreen> {
         Align(
           alignment: Alignment.centerRight,
           child: TextButton(
-            onPressed: () {},
+            onPressed: _handleForgotPassword,
             style: TextButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               minimumSize: Size.zero,
@@ -314,21 +412,25 @@ class _LoginScreenState extends State<LoginScreen> {
             backgroundColor: primaryColor,
             foregroundColor: Colors.white,
             elevation: 8,
-            shadowColor: primaryColor.withOpacity(0.3),
+            shadowColor: primaryColor.withValues(alpha: 0.3),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
             padding: const EdgeInsets.symmetric(vertical: 14),
           ),
-          child: _isLoading 
-            ? const SizedBox(
-                height: 20, width: 20, 
-                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-              )
-            : const Text(
-                'Đăng nhập',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
+          child: _isLoading
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+              : const Text(
+                  'Đăng nhập',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
         ),
         const SizedBox(height: 16),
       ],
@@ -355,12 +457,16 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildSocialButtons(Color surfaceColor, Color borderColor, Color textColor) {
+  Widget _buildSocialButtons(
+    Color surfaceColor,
+    Color borderColor,
+    Color textColor,
+  ) {
     return Row(
       children: [
         Expanded(
           child: OutlinedButton.icon(
-            onPressed: () {},
+            onPressed: _handleGoogleLogin,
             style: OutlinedButton.styleFrom(
               backgroundColor: surfaceColor,
               side: BorderSide(color: borderColor),
@@ -372,7 +478,11 @@ class _LoginScreenState extends State<LoginScreen> {
             icon: Icon(Icons.g_mobiledata, color: textColor, size: 24),
             label: Text(
               'Google',
-              style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: textColor,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ),
@@ -391,7 +501,11 @@ class _LoginScreenState extends State<LoginScreen> {
             icon: Icon(Icons.apple, color: textColor, size: 24),
             label: Text(
               'Apple',
-              style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: textColor,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ),

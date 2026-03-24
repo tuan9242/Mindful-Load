@@ -17,7 +17,6 @@ class _CustomTagScreenState extends State<CustomTagScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String? _userId = FirebaseAuth.instance.currentUser?.uid;
-  bool _isLoading = false;
   bool _isMigrating = false;
 
   @override
@@ -26,9 +25,19 @@ class _CustomTagScreenState extends State<CustomTagScreen> {
     _checkAndMigrateTags();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _checkAndMigrateTags() async {
     if (_userId == null) return;
     
+    // Check if context is available for theme
+    if (!mounted) return;
+    final primaryColorValue = Theme.of(context).primaryColor.toARGB32();
+
     setState(() => _isMigrating = true);
     try {
       final snapshot = await _firestore
@@ -37,11 +46,10 @@ class _CustomTagScreenState extends State<CustomTagScreen> {
           .limit(1)
           .get();
       
-      if (snapshot.docs.isEmpty) {
+      if (snapshot.docs.isEmpty && mounted) {
         // Migrate defaults
         final batch = _firestore.batch();
         
-        // Add defaults from AppConstants
         final allDefaults = [
           ...AppConstants.locations.map((e) => {...e, 'category': 'Địa điểm'}),
           ...AppConstants.activities.map((e) => {...e, 'category': 'Hoạt động'}),
@@ -55,7 +63,7 @@ class _CustomTagScreenState extends State<CustomTagScreen> {
             'label': tag['label'],
             'category': tag['category'],
             'iconCode': (tag['icon'] as IconData).codePoint,
-            'colorValue': Theme.of(context).primaryColor.value,
+            'colorValue': primaryColorValue,
           });
         }
         await batch.commit();
@@ -135,7 +143,7 @@ class _CustomTagScreenState extends State<CustomTagScreen> {
                       onSelected: (val) {
                         if (val) setModalState(() => category = cat);
                       },
-                      selectedColor: primaryColor.withAlpha(50),
+                      selectedColor: primaryColor.withValues(alpha: 0.2),
                       labelStyle: TextStyle(
                         color: isSel ? primaryColor : theme.hintColor,
                         fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
@@ -162,7 +170,7 @@ class _CustomTagScreenState extends State<CustomTagScreen> {
                   hintText: 'Nhập tên nhãn...',
                   hintStyle: TextStyle(color: theme.hintColor),
                   filled: true,
-                  fillColor: theme.brightness == Brightness.dark ? Colors.white.withAlpha(13) : Colors.grey.shade100,
+                  fillColor: theme.brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                     borderSide: BorderSide.none,
@@ -177,7 +185,9 @@ class _CustomTagScreenState extends State<CustomTagScreen> {
                   onPressed: () {
                     final label = tagController.text.trim();
                     if (label.isEmpty) {
-                      NotificationHelper.showTopNotification(context, 'Lỗi', 'Tên nhãn không được để trống', true);
+                      if (context.mounted) {
+                        NotificationHelper.showTopNotification(context, 'Lỗi', 'Tên nhãn không được để trống', true);
+                      }
                       return;
                     }
                     if (_userId == null) return;
@@ -189,7 +199,7 @@ class _CustomTagScreenState extends State<CustomTagScreen> {
                       'iconCode': category == 'Địa điểm' 
                           ? Icons.location_on.codePoint 
                           : (category == 'Hoạt động' ? Icons.bolt.codePoint : Icons.people.codePoint),
-                      'colorValue': primaryColor.value,
+                      'colorValue': primaryColor.toARGB32(),
                     };
 
                     if (existingTag == null) {
@@ -198,8 +208,10 @@ class _CustomTagScreenState extends State<CustomTagScreen> {
                       _firestore.collection('user_tags').doc(existingTag['id']).update(data);
                     }
                     
-                    Navigator.pop(context);
-                    NotificationHelper.showTopNotification(context, 'Thành công', 'Đã lưu nhãn', false);
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                      NotificationHelper.showTopNotification(context, 'Thành công', 'Đã lưu nhãn', false);
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryColor,
@@ -248,6 +260,9 @@ class _CustomTagScreenState extends State<CustomTagScreen> {
   Future<void> _restoreDefaults() async {
     if (_userId == null) return;
     
+    if (!mounted) return;
+    final primaryColorValue = Theme.of(context).primaryColor.toARGB32();
+
     setState(() => _isMigrating = true);
     try {
       final batch = _firestore.batch();
@@ -261,7 +276,7 @@ class _CustomTagScreenState extends State<CustomTagScreen> {
           .collection('user_tags')
           .where('userId', isEqualTo: _userId)
           .get();
-      final existingLabels = existingSnapshot.docs.map((d) => (d.data() as Map<String, dynamic>)['label'] as String).toSet();
+      final existingLabels = existingSnapshot.docs.map((d) => (d.data())['label'] as String).toSet();
 
       int addedCount = 0;
       for (var tag in allDefaults) {
@@ -272,7 +287,7 @@ class _CustomTagScreenState extends State<CustomTagScreen> {
             'label': tag['label'],
             'category': tag['category'],
             'iconCode': (tag['icon'] as IconData).codePoint,
-            'colorValue': Theme.of(context).primaryColor.value,
+            'colorValue': primaryColorValue,
           });
           addedCount++;
         }
@@ -307,7 +322,6 @@ class _CustomTagScreenState extends State<CustomTagScreen> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      // Removed default AppBar to avoid duplication with custom header
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -473,16 +487,16 @@ class _CustomTagScreenState extends State<CustomTagScreen> {
                         children: [
                           Icon(Icons.label_off_outlined, color: theme.hintColor, size: 48),
                           const SizedBox(height: 16),
-                          Text(
+                          const Text(
                             'Chưa có nhãn nào',
-                            style: TextStyle(color: theme.hintColor),
+                            style: TextStyle(color: Colors.grey),
                           ),
                         ],
                       ),
                     );
                   }
 
-                  final query = _searchController.text.toLowerCase();
+                  final queryText = _searchController.text.toLowerCase();
                   var tags = snapshot.data!.docs.map((doc) {
                     final data = doc.data() as Map<String, dynamic>;
                     return {...data, 'id': doc.id};
@@ -491,8 +505,8 @@ class _CustomTagScreenState extends State<CustomTagScreen> {
                   if (_selectedCategory != 'Tất cả') {
                     tags = tags.where((t) => t['category'] == _selectedCategory).toList();
                   }
-                  if (query.isNotEmpty) {
-                    tags = tags.where((t) => t['label'].toString().toLowerCase().contains(query)).toList();
+                  if (queryText.isNotEmpty) {
+                    tags = tags.where((t) => t['label'].toString().toLowerCase().contains(queryText)).toList();
                   }
 
                   return ListView.builder(
@@ -542,7 +556,7 @@ class _CustomTagScreenState extends State<CustomTagScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: theme.primaryColor.withAlpha(25),
+              color: theme.primaryColor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(

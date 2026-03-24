@@ -6,14 +6,17 @@ import 'package:mindful_load/core/constants/app_constants.dart';
 
 class AddDetailScreen extends StatefulWidget {
   final String selectedMood;
-  final VoidCallback? onClose;
-  final VoidCallback? onCompleted;
+  final VoidCallback? onCloseAction;
+  final VoidCallback? onCompletedAction;
+  
+  final bool isOnboarding;
   
   const AddDetailScreen({
     super.key, 
     required this.selectedMood,
-    this.onClose,
-    this.onCompleted,
+    this.onCloseAction,
+    this.onCompletedAction,
+    this.isOnboarding = false,
   });
 
   @override
@@ -21,7 +24,6 @@ class AddDetailScreen extends StatefulWidget {
 }
 
 class _AddDetailScreenState extends State<AddDetailScreen> {
-  // selections
   final Set<String> _selectedLocations = {};
   final Set<String> _selectedActivities = {};
   final Set<String> _selectedCompanions = {};
@@ -47,7 +49,9 @@ class _AddDetailScreenState extends State<AddDetailScreen> {
   }
 
   Future<void> _fetchUserTags() async {
-    if (_userId == null) return;
+    if (_userId == null) {
+      return;
+    }
     try {
       final snapshot = await _firestore.collection('user_tags').where('userId', isEqualTo: _userId).get();
       if (mounted) {
@@ -61,7 +65,9 @@ class _AddDetailScreenState extends State<AddDetailScreen> {
   }
 
   Future<void> _saveEntry() async {
-    if (_userId == null) return;
+    if (_userId == null) {
+      return;
+    }
     setState(() => _isLoading = true);
     try {
       await _firestore.collection('journals').add({
@@ -85,16 +91,22 @@ class _AddDetailScreenState extends State<AddDetailScreen> {
 
       if (mounted) {
         NotificationHelper.showTopNotification(context, 'Thành công', 'Đã lưu cảm xúc của bạn', false);
-        if (widget.onCompleted != null) {
-          widget.onCompleted!();
+        if (widget.onCompletedAction != null) {
+          widget.onCompletedAction!();
         } else {
-          Navigator.of(context).pushNamedAndRemoveUntil('/main', (route) => false);
+          if (mounted) {
+            Navigator.of(context).pushNamedAndRemoveUntil('/main', (route) => false);
+          }
         }
       }
     } catch (e) {
-      if (mounted) NotificationHelper.showTopNotification(context, 'Lỗi', 'Không thể lưu: $e', true);
+      if (mounted) {
+        NotificationHelper.showTopNotification(context, 'Lỗi', 'Không thể lưu: $e', true);
+      }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -102,14 +114,12 @@ class _AddDetailScreenState extends State<AddDetailScreen> {
     final List<Map<String, dynamic>> results = [];
     final Set<String> addedLabels = {};
     
-    // Add defaults first
     for (var item in defaults) {
       if (addedLabels.add(item['label'])) {
         results.add(item);
       }
     }
     
-    // Add user tags if not already present
     for (var tag in _userTags) {
       if (tag['category'] == category) {
         final String label = tag['label'];
@@ -125,7 +135,7 @@ class _AddDetailScreenState extends State<AddDetailScreen> {
   }
 
   void _showAddTagDialog(String category) {
-    String newTag = "";
+    String newTagText = "";
     final theme = Theme.of(context);
     showDialog(
       context: context,
@@ -135,7 +145,7 @@ class _AddDetailScreenState extends State<AddDetailScreen> {
           title: Text('Thêm $category mới', style: TextStyle(color: theme.textTheme.bodyLarge?.color)),
           content: TextField(
             autofocus: true,
-            onChanged: (val) => newTag = val,
+            onChanged: (val) => newTagText = val,
             style: TextStyle(color: theme.textTheme.bodyLarge?.color),
             decoration: InputDecoration(
               hintText: 'Nhập tên $category...',
@@ -150,8 +160,7 @@ class _AddDetailScreenState extends State<AddDetailScreen> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: theme.primaryColor),
               onPressed: () async {
-                final tagLabel = newTag.trim();
-                // Validation: min 2 chars, not just repeated same char
+                final tagLabel = newTagText.trim();
                 if (tagLabel.length < 2) {
                   NotificationHelper.showTopNotification(context, 'Nhãn quá ngắn', 'Tên nhãn phải có ít nhất 2 ký tự', true);
                   return;
@@ -161,29 +170,40 @@ class _AddDetailScreenState extends State<AddDetailScreen> {
                    return;
                 }
 
-                if (_userId == null) return;
+                if (_userId == null) {
+                  return;
+                }
                 try {
                   await _firestore.collection('user_tags').add({
                     'userId': _userId,
-                    'label': newTag.trim(),
+                    'label': tagLabel,
                     'category': category,
                     'iconCode': category == 'Địa điểm' 
                         ? Icons.location_on.codePoint 
                         : (category == 'Hoạt động' ? Icons.bolt.codePoint : Icons.people.codePoint),
-                    'colorValue': theme.primaryColor.value,
-                  });
+                    'colorValue': theme.primaryColor.toARGB32(),
+                   });
                   
                   if (mounted) {
                     setState(() {
-                      if (category == 'Địa điểm') _selectedLocations.add(newTag.trim());
-                      else if (category == 'Hoạt động') _selectedActivities.add(newTag.trim());
-                      else if (category == 'Người') _selectedCompanions.add(newTag.trim());
+                      if (category == 'Địa điểm') {
+                        _selectedLocations.add(tagLabel);
+                      } else if (category == 'Hoạt động') {
+                        _selectedActivities.add(tagLabel);
+                      } else if (category == 'Người') {
+                        _selectedCompanions.add(tagLabel);
+                      }
                     });
                     _fetchUserTags();
-                    Navigator.pop(context);
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                    }
                   }
                 } catch (e) {
                   debugPrint("Error adding tag: $e");
+                  if (context.mounted) {
+                    NotificationHelper.showTopNotification(context, 'Lỗi', 'Không thể thêm nhãn: $e', true);
+                  }
                 }
               },
               child: const Text('Thêm', style: TextStyle(color: Colors.white)),
@@ -213,7 +233,6 @@ class _AddDetailScreenState extends State<AddDetailScreen> {
           ],
         ),
         const SizedBox(height: 10),
-        // Sleep Hours Slider
         Text(
           'Số giờ ngủ: ${_sleepHours.toStringAsFixed(1)} giờ',
           style: TextStyle(color: theme.textTheme.bodyLarge?.color),
@@ -222,9 +241,9 @@ class _AddDetailScreenState extends State<AddDetailScreen> {
           value: _sleepHours,
           min: 0,
           max: 12,
-          divisions: 24, // 0.5 hour increments
+          divisions: 24,
           activeColor: theme.primaryColor,
-          inactiveColor: theme.primaryColor.withOpacity(0.3),
+          inactiveColor: theme.primaryColor.withValues(alpha: 0.3),
           onChanged: (value) {
             setState(() {
               _sleepHours = value;
@@ -234,7 +253,6 @@ class _AddDetailScreenState extends State<AddDetailScreen> {
       ],
     );
   }
-
 
   Widget _buildSection({
     required BuildContext context,
@@ -296,7 +314,6 @@ class _AddDetailScreenState extends State<AddDetailScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               child: Row(
@@ -311,8 +328,7 @@ class _AddDetailScreenState extends State<AddDetailScreen> {
                         color: theme.cardColor,
                         border: Border.all(color: theme.dividerColor),
                       ),
-                      child: Icon(Icons.arrow_back,
-                          color: textColor, size: 18),
+                      child: Icon(Icons.arrow_back, color: textColor, size: 18),
                     ),
                   ),
                   Expanded(
@@ -330,10 +346,7 @@ class _AddDetailScreenState extends State<AddDetailScreen> {
                 ],
               ),
             ),
-
-            // Divider
             Container(height: 1, color: theme.dividerColor),
-
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(24),
@@ -352,13 +365,9 @@ class _AddDetailScreenState extends State<AddDetailScreen> {
                     const SizedBox(height: 8),
                     Text(
                       'Chọn nhiều yếu tố liên quan đến cảm xúc hiện tại.',
-                      style: TextStyle(
-                        color: secondaryTextColor,
-                        fontSize: 13,
-                      ),
+                      style: TextStyle(color: secondaryTextColor, fontSize: 13),
                     ),
                     const SizedBox(height: 28),
-
                     _buildSection(
                       context: context,
                       title: 'Đang ở đâu?',
@@ -378,7 +387,6 @@ class _AddDetailScreenState extends State<AddDetailScreen> {
                       onAdd: () => _showAddTagDialog('Địa điểm'),
                     ),
                     const SizedBox(height: 24),
-
                     _buildSection(
                       context: context,
                       title: 'Đang làm gì?',
@@ -398,7 +406,6 @@ class _AddDetailScreenState extends State<AddDetailScreen> {
                       onAdd: () => _showAddTagDialog('Hoạt động'),
                     ),
                     const SizedBox(height: 24),
-
                     _buildSection(
                       context: context,
                       title: 'Đang với ai?',
@@ -418,19 +425,11 @@ class _AddDetailScreenState extends State<AddDetailScreen> {
                       onAdd: () => _showAddTagDialog('Người'),
                     ),
                     const SizedBox(height: 24),
-                     
-                     // Wellness Metrics
-                     _buildWellnessSection(theme),
-
-                     const SizedBox(height: 32),
-                    
+                    _buildWellnessSection(theme),
+                    const SizedBox(height: 32),
                     Text(
                       'Ghi chú thêm',
-                      style: TextStyle(
-                        color: theme.primaryColor,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: TextStyle(color: theme.primaryColor, fontSize: 15, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 12),
                     TextField(
@@ -441,14 +440,11 @@ class _AddDetailScreenState extends State<AddDetailScreen> {
                         hintText: 'Hôm nay bạn thấy thế nào? Hãy viết ra vài dòng nhé...',
                         hintStyle: TextStyle(color: theme.hintColor),
                         filled: true,
-                        fillColor: theme.brightness == Brightness.dark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
+                        fillColor: theme.brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: theme.primaryColor.withOpacity(0.5)),
+                          borderSide: BorderSide(color: theme.primaryColor.withValues(alpha: 0.5)),
                         ),
                       ),
                     ),
@@ -457,8 +453,6 @@ class _AddDetailScreenState extends State<AddDetailScreen> {
                 ),
               ),
             ),
-
-            // Done button
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               child: SizedBox(
@@ -469,25 +463,17 @@ class _AddDetailScreenState extends State<AddDetailScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: theme.primaryColor,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     elevation: 8,
-                    shadowColor: theme.primaryColor.withOpacity(0.4),
+                    shadowColor: theme.primaryColor.withValues(alpha: 0.4),
                   ),
                   child: _isLoading 
                     ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                     : const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
-                          'Hoàn tất',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
+                        Text('Hoàn tất', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                        SizedBox(width: 8),
                         Icon(Icons.check, size: 18),
                       ],
                     ),
@@ -507,12 +493,7 @@ class _TagChip extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _TagChip({
-    required this.label,
-    required this.icon,
-    required this.isSelected,
-    required this.onTap,
-  });
+  const _TagChip({required this.label, required this.icon, required this.isSelected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -525,30 +506,19 @@ class _TagChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: isSelected ? theme.primaryColor : theme.cardColor,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isSelected
-                ? theme.primaryColor.withOpacity(0.8)
-                : theme.dividerColor,
-          ),
+          border: Border.all(color: isSelected ? theme.primaryColor.withValues(alpha: 0.8) : theme.dividerColor),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: 14,
-              color: isSelected
-                  ? Colors.white
-                  : theme.textTheme.bodySmall?.color,
-            ),
+            Icon(icon, size: 14, color: isSelected ? Colors.white : theme.textTheme.bodySmall?.color),
             const SizedBox(width: 6),
             Text(
               label,
               style: TextStyle(
                 color: isSelected ? Colors.white : theme.textTheme.bodySmall?.color,
                 fontSize: 13,
-                fontWeight:
-                    isSelected ? FontWeight.w600 : FontWeight.normal,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
           ],
@@ -572,9 +542,7 @@ class _AddChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: theme.cardColor,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: theme.dividerColor,
-          ),
+          border: Border.all(color: theme.dividerColor),
         ),
         child: Icon(Icons.add, size: 14, color: theme.hintColor),
       ),

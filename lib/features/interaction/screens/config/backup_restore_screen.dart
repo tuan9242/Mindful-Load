@@ -55,18 +55,15 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
     }
 
     try {
-      // Simulate progress
-      for (int i = 1; i <= 10; i++) {
-        await Future.delayed(const Duration(milliseconds: 200));
-        if (mounted) setState(() => _progress = i / 10.0);
-      }
-
       if (mode == 'backup') {
+        setState(() => _progress = 0.3);
         final now = DateTime.now();
+        // Just updating the last backup timestamp is enough as everything is real-time
         await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
           'lastBackup': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
         
+        setState(() => _progress = 0.7);
         await FirebaseFirestore.instance.collection('notifications').add({
           'userId': user.uid,
           'title': 'Sao lưu hoàn tất',
@@ -76,15 +73,23 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
         });
         
         if (mounted) {
-          setState(() => _lastBackupTime = now);
+          setState(() {
+            _lastBackupTime = now;
+            _progress = 1.0;
+          });
           _showTopNotification('Sao lưu thành công', 'Dữ liệu đã đồng bộ lên Cloud', false);
         }
       } else {
-        // 'restore'
-        // Simulate reading from cloud
-        await FirebaseFirestore.instance.collection('journals').where('userId', isEqualTo: user.uid).limit(1).get();
+        // 'restore' - Real fetch to ensure data exists
+        setState(() => _progress = 0.5);
+        final snapshot = await FirebaseFirestore.instance
+            .collection('journals')
+            .where('userId', isEqualTo: user.uid)
+            .get();
+            
+        setState(() => _progress = 1.0);
         if (mounted) {
-          _showTopNotification('Khôi phục thành công', 'Đã lấy toàn bộ dữ liệu từ Cloud', false);
+          _showTopNotification('Khôi phục thành công', 'Đã đồng bộ ${snapshot.docs.length} bản ghi nhật ký.', false);
         }
       }
     } catch (e) {
@@ -136,7 +141,7 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: bgColor.withOpacity(0.8),
+        backgroundColor: bgColor.withValues(alpha: 0.8),
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_new, color: textColor),
@@ -158,7 +163,7 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
                     width: 120,
                     height: 120,
                     decoration: BoxDecoration(
-                      color: primaryColor.withOpacity(0.1),
+                      color: primaryColor.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Center(
